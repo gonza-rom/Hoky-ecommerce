@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Categoria {
+  id          Int        @id @default(autoincrement())
+  nombre      String     @unique
+  descripcion String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  productos   Producto[]
+}
+
+model Proveedor {
+  id        Int        @id @default(autoincrement())
+  nombre    String
+  telefono  String?
+  email     String?    @unique
+  direccion String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  productos Producto[]
+}
+
+model Producto {
+  id              Int                @id @default(autoincrement())
+  nombre          String
+  descripcion     String?
+  codigoProducto  String?            @unique
+  precio          Float
+  stock           Int                @default(0)
+  stockMinimo     Int                @default(5)
+  imagen          String?
+  codigoBarras    String?            @unique
+  categoriaId     Int
+  proveedorId     Int
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  categoria       Categoria          @relation(fields: [categoriaId], references: [id])
+  proveedor       Proveedor          @relation(fields: [proveedorId], references: [id])
+  movimientos     Movimiento[]
+  ventaItems      VentaItem[]
+  precioHistorico PrecioHistorico[]
+}
+
+model Movimiento {
+  id          Int      @id @default(autoincrement())
+  productoId  Int
+  tipo        String
+  cantidad    Int
+  motivo      String?
+  createdAt   DateTime @default(now())
+  producto    Producto @relation(fields: [productoId], references: [id])
+}
+
+model Venta {
+  id            Int         @id @default(autoincrement())
+  total         Float
+  metodoPago    String
+  clienteNombre String?
+  clienteDni    String?
+  observaciones String?
+  createdAt     DateTime    @default(now())
+  items         VentaItem[]
+}
+
+model VentaItem {
+  id         Int      @id @default(autoincrement())
+  ventaId    Int
+  productoId Int
+  cantidad   Int
+  precioUnit Float
+  subtotal   Float
+  venta      Venta    @relation(fields: [ventaId], references: [id], onDelete: Cascade)
+  producto   Producto @relation(fields: [productoId], references: [id])
+}
+
+model PrecioHistorico {
+  id          Int      @id @default(autoincrement())
+  productoId  Int
+  precioViejo Float
+  precioNuevo Float
+  motivo      String?
+  createdAt   DateTime @default(now())
+  producto    Producto @relation(fields: [productoId], references: [id])
+}
