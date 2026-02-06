@@ -8,7 +8,6 @@ export function CartProvider({ children }) {
   const [cart, setCart] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
 
-  // Cargar carrito del localStorage al inicio
   useEffect(() => {
     const savedCart = localStorage.getItem('jmr-cart');
     if (savedCart) {
@@ -16,7 +15,6 @@ export function CartProvider({ children }) {
     }
   }, []);
 
-  // Guardar carrito en localStorage cuando cambie
   useEffect(() => {
     if (cart.length > 0) {
       localStorage.setItem('jmr-cart', JSON.stringify(cart));
@@ -40,7 +38,6 @@ export function CartProvider({ children }) {
       return [...prevCart, { ...producto, cantidad }];
     });
     
-    // Abrir el carrito brevemente
     setIsOpen(true);
     setTimeout(() => setIsOpen(false), 2000);
   };
