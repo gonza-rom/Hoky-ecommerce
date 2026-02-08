@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRight, Heart, Users, Star, Award } from 'lucide-react';
+import { ArrowRight, Heart, Star, Award, TrendingUp } from 'lucide-react';
 
 export default function NosotrosPage() {
   return (
@@ -20,13 +20,13 @@ export default function NosotrosPage() {
       {/* Historia */}
       <section className="py-16">
         <div className="container mx-auto px-4">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
+          <div className="grid md:grid-cols-2 gap-12 items-center mb-16">
             <div className="relative h-96 bg-gray-100 rounded-2xl overflow-hidden">
               <Image
-                src="/logo-jmr.png"
-                alt="Marroquinería JMR"
+                src="/local-fachada.jpg"
+                alt="Fachada Marroquinería JMR"
                 fill
-                className="object-contain p-8"
+                className="object-cover"
               />
             </div>
             <div>
@@ -49,14 +49,41 @@ export default function NosotrosPage() {
                 </p>
                 <p>
                   Actualmente, gestiono con éxito dos sucursales, una en San Fernando del Valle 
-                  de Catamarca y otra en Valle Viejo. Mi equipo, compuesto por mis dedicados hijos, 
-                  Silvia, Lucas y Edith, desempeñan un papel fundamental en la atención al cliente 
-                  y la gestión de inventario.
+                  de Catamarca y otra en Valle Viejo. A través de una cuidadosa selección de 
+                  mercadería de alta calidad, buscamos satisfacer las necesidades cambiantes 
+                  de nuestros clientes.
                 </p>
-                <p>
-                  A través de una cuidadosa selección de mercadería de alta calidad, buscamos 
-                  satisfacer las necesidades cambiantes de nuestros clientes.
-                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Galería del Local */}
+          <div className="mb-16">
+            <h2 className="text-3xl font-bold text-center mb-8">Nuestro Local</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="relative h-64 rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
+                <Image
+                  src="/local-interior-1.jpg"
+                  alt="Interior Marroquinería JMR 1"
+                  fill
+                  className="object-cover hover:scale-105 transition-transform duration-300"
+                />
+              </div>
+              <div className="relative h-64 rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
+                <Image
+                  src="/local-interior-2.jpg"
+                  alt="Interior Marroquinería JMR 2"
+                  fill
+                  className="object-cover hover:scale-105 transition-transform duration-300"
+                />
+              </div>
+              <div className="relative h-64 rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
+                <Image
+                  src="/local-interior-3.jpg"
+                  alt="Interior Marroquinería JMR 3"
+                  fill
+                  className="object-cover hover:scale-105 transition-transform duration-300"
+                />
               </div>
             </div>
           </div>
@@ -88,11 +115,11 @@ export default function NosotrosPage() {
             </div>
             <div className="text-center">
               <div className="bg-jmr-green text-white w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Users className="w-8 h-8" />
+                <TrendingUp className="w-8 h-8" />
               </div>
-              <h3 className="font-bold text-lg mb-2">Familia</h3>
+              <h3 className="font-bold text-lg mb-2">Servicio</h3>
               <p className="text-gray-600 text-sm">
-                Un negocio familiar que atiende con calidez y cercanía
+                Atención personalizada para cada cliente
               </p>
             </div>
             <div className="text-center">
@@ -113,21 +140,37 @@ export default function NosotrosPage() {
         <div className="container mx-auto px-4">
           <h2 className="text-3xl font-bold text-center mb-12">Nuestras Sucursales</h2>
           <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            <div className="bg-white p-6 rounded-lg shadow-md">
-              <h3 className="text-xl font-bold mb-4 text-jmr-green">San Fernando</h3>
+            <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-jmr-green">
+              <h3 className="text-xl font-bold mb-4 text-jmr-green">Sucursal Central - San Fernando</h3>
               <p className="text-gray-700 mb-2">📍 Rivadavia 564</p>
               <p className="text-gray-700 mb-2">📞 +54 383 492-7252</p>
-              <p className="text-gray-600 text-sm">
-                Nuestra sucursal principal en el corazón de la ciudad
+              <p className="text-gray-600 text-sm mb-3">
+                En el corazón de la ciudad
               </p>
+              <a
+                href="https://maps.app.goo.gl/qAhZgq3nbN8k6MRx7"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-jmr-green font-semibold hover:underline"
+              >
+                Ver en mapa →
+              </a>
             </div>
-            <div className="bg-white p-6 rounded-lg shadow-md">
+            <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-jmr-green">
               <h3 className="text-xl font-bold mb-4 text-jmr-green">Valle Viejo</h3>
               <p className="text-gray-700 mb-2">📍 Av Pte Castillo 1165</p>
               <p className="text-gray-700 mb-2">📞 +54 383 492-7252</p>
-              <p className="text-gray-600 text-sm">
-                Ubicados estratégicamente para mejor acceso
+              <p className="text-gray-600 text-sm mb-3">
+                Ubicación estratégica con estacionamiento
               </p>
+              <a
+                href="https://maps.app.goo.gl/QoTBKrUCSEzssJ8C7"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-jmr-green font-semibold hover:underline"
+              >
+                Ver en mapa →
+              </a>
             </div>
           </div>
         </div>

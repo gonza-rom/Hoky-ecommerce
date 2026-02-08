@@ -68,59 +68,95 @@ export default function ContactoPage() {
                 <Clock className="w-6 h-6" />
               </div>
               <h3 className="font-bold text-lg mb-2">Horarios</h3>
-              <p className="text-gray-600 text-sm">Lunes a Viernes</p>
-              <p className="text-gray-600 text-sm">9:00 - 13:00</p>
-              <p className="text-gray-600 text-sm">16:00 - 20:00</p>
-              <p className="text-gray-600 text-sm mt-2">Sábados: 9:00 - 13:00</p>
+              <div className="text-gray-600 text-sm space-y-1">
+                <p className="font-semibold text-gray-700">Lunes a Viernes</p>
+                <p>8:30 - 13:00</p>
+                <p>17:00 - 21:30</p>
+                <p className="font-semibold text-gray-700 mt-2">Sábados</p>
+                <p>9:00 - 13:00</p>
+                <p>17:00 - 21:00</p>
+                <p className="font-semibold text-red-600 mt-2">Domingos: Cerrado</p>
+              </div>
             </div>
           </div>
 
-          {/* Sucursales */}
+          {/* Sucursales con Mapas */}
+          <h2 className="text-3xl font-bold text-center mb-12">Nuestras Sucursales</h2>
           <div className="grid md:grid-cols-2 gap-8 mb-16">
-            <div className="bg-white p-8 rounded-lg shadow-md">
-              <div className="flex items-start gap-4 mb-4">
-                <div className="bg-jmr-green text-white w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0">
-                  <MapPin className="w-6 h-6" />
-                </div>
-                <div>
-                  <h3 className="text-2xl font-bold mb-2 text-jmr-green">San Fernando</h3>
-                  <p className="text-gray-700 text-lg mb-4">Rivadavia 564</p>
-                  <p className="text-gray-600 mb-4">
-                    Nuestra sucursal principal en el centro de la ciudad, fácil acceso y 
-                    amplio surtido de productos.
-                  </p>
-                  <a
-                    href="https://maps.google.com/?q=Rivadavia+564+San+Fernando+del+Valle+de+Catamarca"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-jmr-green font-semibold hover:underline"
-                  >
-                    Ver en mapa →
-                  </a>
+            {/* San Fernando - Sucursal Central */}
+            <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+              <div className="relative h-64 bg-gray-200">
+                <iframe
+                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3534.2!2d-65.78!3d-28.47!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMjjCsDI4JzEyLjAiUyA2NcKwNDYnNDguMCJX!5e0!3m2!1sen!2sar!4v1234567890"
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0 }}
+                  allowFullScreen=""
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  title="Mapa Sucursal San Fernando"
+                ></iframe>
+              </div>
+              <div className="p-6">
+                <div className="flex items-start gap-4">
+                  <div className="bg-jmr-green text-white w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0">
+                    <MapPin className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold mb-2 text-jmr-green">Sucursal Central - San Fernando</h3>
+                    <p className="text-gray-700 text-lg mb-2">📍 Rivadavia 564</p>
+                    <p className="text-gray-700 mb-2">📞 +54 383 492-7252</p>
+                    <p className="text-gray-600 mb-4">
+                      Nuestra sucursal principal en el centro de la ciudad. Fácil acceso y amplio surtido de productos.
+                    </p>
+                    <a
+                      href="https://maps.app.goo.gl/qAhZgq3nbN8k6MRx7"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block bg-jmr-green hover:bg-jmr-green-dark text-white px-4 py-2 rounded-lg font-semibold transition-colors"
+                    >
+                      Cómo llegar →
+                    </a>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="bg-white p-8 rounded-lg shadow-md">
-              <div className="flex items-start gap-4 mb-4">
-                <div className="bg-jmr-green text-white w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0">
-                  <MapPin className="w-6 h-6" />
-                </div>
-                <div>
-                  <h3 className="text-2xl font-bold mb-2 text-jmr-green">Valle Viejo</h3>
-                  <p className="text-gray-700 text-lg mb-4">Av Pte Castillo 1165</p>
-                  <p className="text-gray-600 mb-4">
-                    Sucursal ubicada estratégicamente con estacionamiento y 
-                    atención personalizada.
-                  </p>
-                  <a
-                    href="https://maps.google.com/?q=Av+Pte+Castillo+1165+Valle+Viejo+Catamarca"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-jmr-green font-semibold hover:underline"
-                  >
-                    Ver en mapa →
-                  </a>
+            {/* Valle Viejo */}
+            <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+              <div className="relative h-64 bg-gray-200">
+                <iframe
+                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3534.2!2d-65.78!3d-28.47!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMjjCsDI4JzEyLjAiUyA2NcKwNDYnNDguMCJX!5e0!3m2!1sen!2sar!4v1234567890"
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0 }}
+                  allowFullScreen=""
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  title="Mapa Sucursal Valle Viejo"
+                ></iframe>
+              </div>
+              <div className="p-6">
+                <div className="flex items-start gap-4">
+                  <div className="bg-jmr-green text-white w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0">
+                    <MapPin className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold mb-2 text-jmr-green">Valle Viejo</h3>
+                    <p className="text-gray-700 text-lg mb-2">📍 Av Pte Castillo 1165</p>
+                    <p className="text-gray-700 mb-2">📞 +54 383 492-7252</p>
+                    <p className="text-gray-600 mb-4">
+                      Ubicados estratégicamente con estacionamiento y atención personalizada.
+                    </p>
+                    <a
+                      href="https://maps.app.goo.gl/QoTBKrUCSEzssJ8C7"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block bg-jmr-green hover:bg-jmr-green-dark text-white px-4 py-2 rounded-lg font-semibold transition-colors"
+                    >
+                      Cómo llegar →
+                    </a>
+                  </div>
                 </div>
               </div>
             </div>
