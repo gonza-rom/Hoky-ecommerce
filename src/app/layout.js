@@ -47,15 +47,20 @@ export const metadata = {
     images: ['/logo-jmr.png'],
   },
   verification: {
-    google: 'google-site-verification-code', // Agregar cuando tengas el código
+    google: 'google-site-verification-code',
   },
   alternates: {
     canonical: 'https://www.jmrmarroquineria.com.ar',
   },
   icons: {
-    icon: '/logo-jmr.png',
-    shortcut: '/logo-jmr.png',
-    apple: '/logo-jmr.png',
+    icon: [
+      { url: '/favicon.ico', sizes: '32x32', type: 'image/x-icon' },
+      { url: '/logo-jmr.png', sizes: '192x192', type: 'image/png' },
+    ],
+    shortcut: '/favicon.ico',
+    apple: [
+      { url: '/logo-jmr.png', sizes: '180x180', type: 'image/png' },
+    ],
   },
 };
 
@@ -63,7 +68,9 @@ export default function RootLayout({ children }) {
   return (
     <html lang="es-AR">
       <head>
-        <link rel="icon" href="/logo-jmr.png" />
+        <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/logo-jmr.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/logo-jmr.png" />
         <meta name="theme-color" content="#16a34a" />
         <meta name="msapplication-TileColor" content="#16a34a" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
