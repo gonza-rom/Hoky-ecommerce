@@ -27,7 +27,7 @@ export const metadata = {
   openGraph: {
     type: 'website',
     locale: 'es_AR',
-    url: 'https://www.marroquineriajmr.com',
+    url: 'https://www.jmrmarroquineria.com.ar',
     title: 'Marroquinería JMR - Mochilas, Bolsos y Carteras',
     description: 'Venta de productos de marroquinería de alta calidad. Más de 20 años en Catamarca.',
     siteName: 'Marroquinería JMR',
@@ -50,7 +50,7 @@ export const metadata = {
     google: 'google-site-verification-code', // Agregar cuando tengas el código
   },
   alternates: {
-    canonical: 'https://www.marroquineriajmr.com',
+    canonical: 'https://www.jmrmarroquineria.com.ar',
   },
   icons: {
     icon: '/logo-jmr.png',
