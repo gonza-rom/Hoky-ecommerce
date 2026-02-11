@@ -90,7 +90,7 @@ body {
 
 /* Carousel Animation */
 .animate-scroll {
-  animation: scroll 30s linear infinite;
+  animation: scroll 12s linear infinite;
 }
 
 @keyframes scroll {

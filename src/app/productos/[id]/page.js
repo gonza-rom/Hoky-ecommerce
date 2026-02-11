@@ -6,6 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ShoppingBag, ArrowLeft, Package, Truck, Shield, Star, Plus, Minus, Share2 } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
+import ProductGallery from '@/components/ProductGallery';
 
 export default function ProductoDetallePage() {
   const params = useParams();
@@ -187,43 +188,12 @@ export default function ProductoDetallePage() {
         <div className="grid lg:grid-cols-2 gap-8 mb-12">
           {/* Galería de Imágenes */}
           <div>
-            <div className="bg-white rounded-lg shadow-md overflow-hidden mb-4">
-              <div className="relative h-96 md:h-[500px] bg-gray-100">
-                {producto.imagen ? (
-                  <Image
-                    src={producto.imagen}
-                    alt={producto.nombre}
-                    fill
-                    className="object-contain p-8"
-                    priority
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <ShoppingBag className="w-32 h-32 text-gray-400" />
-                  </div>
-                )}
-                
-                {/* Badge de stock */}
-                {producto.stock <= producto.stockMinimo && producto.stock > 0 && (
-                  <div className="absolute top-4 right-4 bg-red-600 text-white px-4 py-2 rounded-lg font-semibold shadow-lg">
-                    ¡Últimas {producto.stock} unidades!
-                  </div>
-                )}
-                
-                {producto.stock === 0 && (
-                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                    <span className="bg-white text-gray-900 px-6 py-3 rounded-lg font-bold text-xl">
-                      Sin Stock
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
+            <ProductGallery producto={producto} />
 
             {/* Botón compartir */}
             <button
               onClick={handleCompartir}
-              className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-3 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
+              className="w-full mt-4 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-3 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
             >
               <Share2 className="w-5 h-5" />
               Compartir Producto
