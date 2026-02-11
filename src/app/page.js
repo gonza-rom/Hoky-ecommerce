@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ShoppingBag, ArrowRight, Star, TrendingUp, CreditCard, Smartphone, Wallet, QrCode } from 'lucide-react';
+import { ShoppingBag, ArrowRight, Star, TrendingUp, CreditCard, Wallet, QrCode } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
+import ProductCard from '@/components/ProductCard';
 
 export default function Home() {
   const [productosDestacados, setProductosDestacados] = useState([]);
@@ -111,7 +112,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Métodos de Pago - Sección Profesional */}
+      {/* Métodos de Pago */}
       <section className="py-16 bg-white border-b">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
@@ -123,7 +124,6 @@ export default function Home() {
             </p>
           </div>
 
-          {/* Tipos de Pago con Iconos */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
             <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow">
               <div className="flex flex-col items-center text-center">
@@ -166,7 +166,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Logos de Medios de Pago */}
           <div className="bg-gray-50 rounded-2xl p-8">
             <h3 className="text-center font-semibold text-gray-700 mb-6">
               Tarjetas y billeteras aceptadas:
@@ -185,7 +184,6 @@ export default function Home() {
                     height={50}
                     className="object-contain max-h-12"
                     onError={(e) => {
-                      // Fallback si no existe el logo
                       e.target.style.display = 'none';
                       e.target.parentElement.innerHTML = `<span class="text-xs font-semibold text-gray-600 text-center">${medio.nombre}</span>`;
                     }}
@@ -252,6 +250,7 @@ export default function Home() {
             <>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
                 {productosDestacados.map((producto) => (
+                  // ✅ Usa el componente compartido que soporta imagenes[]
                   <ProductCard
                     key={producto.id}
                     producto={producto}
@@ -279,10 +278,9 @@ export default function Home() {
         <div className="container mx-auto px-4">
           <h2 className="text-3xl font-bold text-center mb-12">Nuestras Marcas</h2>
           
-          {/* Carousel Container */}
           <div className="relative overflow-hidden">
             <div className="flex animate-scroll space-x-8">
-              {/* Primera vuelta de marcas */}
+              {/* Primera vuelta */}
               <MarcaLogo nombre="Alpine Skate" />
               <MarcaLogo nombre="Agarrate Catalina" />
               <MarcaLogo nombre="Carey" />
@@ -302,7 +300,6 @@ export default function Home() {
               <MarcaLogo nombre="Bossi" />
               <MarcaLogo nombre="Amayra" />
               <MarcaLogo nombre="Biwo" />
-              
               {/* Segunda vuelta (duplicado para efecto infinito) */}
               <MarcaLogo nombre="Alpine Skate" />
               <MarcaLogo nombre="Agarrate Catalina" />
@@ -335,54 +332,6 @@ export default function Home() {
   );
 }
 
-function ProductCard({ producto, onAddToCart }) {
-  return (
-    <div className="product-card bg-white rounded-lg shadow-md overflow-hidden group">
-      <div className="relative h-48 bg-gray-100">
-        {producto.imagen ? (
-          <Image
-            src={producto.imagen}
-            alt={producto.nombre}
-            fill
-            className="object-cover group-hover:scale-105 transition-transform duration-300"
-            sizes="(max-width: 768px) 50vw, 25vw"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <ShoppingBag className="w-16 h-16 text-gray-400" />
-          </div>
-        )}
-        {producto.stock <= producto.stockMinimo && producto.stock > 0 && (
-          <div className="absolute top-2 right-2 bg-red-600 text-white text-xs px-2 py-1 rounded">
-            Últimas unidades
-          </div>
-        )}
-      </div>
-      <div className="p-4">
-        <h3 className="font-semibold text-gray-900 mb-1 line-clamp-2 min-h-[2.5rem]">
-          {producto.nombre}
-        </h3>
-        {producto.categoria && (
-          <p className="text-xs text-gray-500 mb-2">{producto.categoria.nombre}</p>
-        )}
-        <div className="flex items-center justify-between mt-3">
-          <p className="text-xl font-bold text-jmr-green">
-            ${producto.precio.toFixed(2)}
-          </p>
-          <button
-            onClick={() => onAddToCart(producto, 1)}
-            disabled={producto.stock === 0}
-            className="bg-jmr-green hover:bg-jmr-green-dark text-white p-2 rounded-lg transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-            title="Agregar al carrito"
-          >
-            <ShoppingBag className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function MarcaLogo({ nombre }) {
   return (
     <div className="flex-shrink-0 bg-white px-8 py-6 rounded-lg shadow-md hover:shadow-lg transition-shadow border border-gray-200 min-w-[200px] h-32 flex items-center justify-center">
@@ -393,7 +342,6 @@ function MarcaLogo({ nombre }) {
         height={80}
         className="object-contain max-h-20"
         onError={(e) => {
-          // Fallback si no existe la imagen
           e.target.style.display = 'none';
           e.target.parentElement.innerHTML = `<span class="font-bold text-gray-700 text-lg">${nombre}</span>`;
         }}

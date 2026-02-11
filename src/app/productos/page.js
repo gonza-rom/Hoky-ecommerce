@@ -1,11 +1,10 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
-import Image from 'next/image';
-import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { ShoppingBag, Search, Filter, X, SlidersHorizontal, Eye } from 'lucide-react';
+import { ShoppingBag, Search, Filter, X, SlidersHorizontal } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
+import ProductCard from '@/components/ProductCard';
 
 // Componente separado que usa useSearchParams
 function ProductosContent() {
@@ -352,91 +351,11 @@ function ProductosContent() {
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
               {productosFiltrados.map((producto) => (
+                // ✅ Usa el componente compartido que soporta imagenes[]
                 <ProductCard key={producto.id} producto={producto} onAddToCart={addToCart} />
               ))}
             </div>
           )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ProductCard({ producto, onAddToCart }) {
-  return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col group">
-      <Link href={`/productos/${producto.id}`} className="block">
-        <div className="relative h-48 bg-gray-100">
-          {producto.imagen ? (
-            <Image
-              src={producto.imagen}
-              alt={producto.nombre}
-              fill
-              className="object-cover group-hover:scale-105 transition-transform duration-300"
-              sizes="(max-width: 768px) 50vw, 33vw"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <ShoppingBag className="w-16 h-16 text-gray-400" />
-            </div>
-          )}
-          
-          {producto.stock <= producto.stockMinimo && producto.stock > 0 && (
-            <div className="absolute top-2 right-2 bg-red-600 text-white text-xs px-2 py-1 rounded shadow-lg font-semibold">
-              ¡Últimas unidades!
-            </div>
-          )}
-          
-          {producto.stock === 0 && (
-            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-              <span className="bg-white text-gray-900 px-4 py-2 rounded-lg font-semibold">
-                Sin Stock
-              </span>
-            </div>
-          )}
-
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-            <span className="bg-white text-gray-900 px-4 py-2 rounded-lg font-semibold flex items-center gap-2 shadow-lg">
-              <Eye className="w-4 h-4" />
-              Ver Detalles
-            </span>
-          </div>
-        </div>
-      </Link>
-      
-      <div className="p-4 flex flex-col flex-1">
-        <Link href={`/productos/${producto.id}`}>
-          <h3 className="font-semibold text-gray-900 mb-1 line-clamp-2 min-h-[2.5rem] hover:text-jmr-green transition-colors">
-            {producto.nombre}
-          </h3>
-        </Link>
-        
-        {producto.categoria && (
-          <Link 
-            href={`/productos?categoria=${producto.categoriaId}`}
-            className="text-xs text-gray-500 hover:text-jmr-green mb-2 inline-block"
-          >
-            {producto.categoria.nombre}
-          </Link>
-        )}
-        
-        <div className="mt-auto">
-          <div className="flex items-center justify-between mt-3">
-            <p className="text-xl font-bold text-jmr-green">
-              ${producto.precio.toFixed(2)}
-            </p>
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                onAddToCart(producto, 1);
-              }}
-              disabled={producto.stock === 0}
-              className="bg-jmr-green hover:bg-jmr-green-dark text-white p-2 rounded-lg transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
-              title={producto.stock === 0 ? 'Sin stock' : 'Agregar al carrito'}
-            >
-              <ShoppingBag className="w-5 h-5" />
-            </button>
-          </div>
         </div>
       </div>
     </div>
