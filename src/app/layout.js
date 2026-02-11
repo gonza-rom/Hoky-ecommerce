@@ -82,7 +82,7 @@ export default function RootLayout({ children }) {
           <main className="min-h-screen">
             {children}
           </main>
-          <Footer />
+          <Footer />        
         </CartProvider>
       </body>
     </html>

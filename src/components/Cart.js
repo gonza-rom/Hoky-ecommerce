@@ -3,6 +3,7 @@
 import { X, Plus, Minus, Trash2, ShoppingBag } from 'lucide-react';
 import Image from 'next/image';
 import { useCart } from '@/context/CartContext';
+import { showToast } from 'nextjs-toast-notify';
 
 const WHATSAPP_NUMBER = '543834927252';
 
@@ -18,7 +19,10 @@ export default function Cart() {
   } = useCart();
 
   const enviarPorWhatsApp = () => {
-    if (cart.length === 0) return;
+    if (cart.length === 0) {
+      showToast.warning('⚠️ El carrito está vacío');
+      return;
+    }
 
     // Construir mensaje
     let mensaje = '¡Hola! Me gustaría hacer el siguiente pedido:\n\n';
@@ -40,8 +44,7 @@ export default function Cart() {
     // Abrir WhatsApp
     window.open(url, '_blank');
     
-    // Opcional: limpiar carrito después de enviar
-    // clearCart();
+    showToast.success('📱 Abriendo WhatsApp...');
   };
 
   if (!isOpen) return null;
@@ -55,7 +58,7 @@ export default function Cart() {
       />
 
       {/* Cart sidebar */}
-      <div className="fixed right-0 top-0 h-full w-full sm:w-96 bg-white shadow-2xl z-50 flex flex-col">
+      <div className="fixed right-0 top-0 h-full w-full sm:w-96 bg-white shadow-2xl z-50 flex flex-col animate-slide-in">
         {/* Header */}
         <div className="p-4 border-b flex items-center justify-between bg-jmr-green text-white">
           <div className="flex items-center gap-2">
@@ -81,7 +84,7 @@ export default function Cart() {
           ) : (
             <div className="space-y-4">
               {cart.map((item) => (
-                <div key={item.id} className="flex gap-3 border-b pb-4">
+                <div key={item.id} className="flex gap-3 border-b pb-4 hover:bg-gray-50 transition-colors rounded-lg p-2">
                   {/* Imagen */}
                   <div className="relative w-20 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
                     {item.imagen ? (
@@ -116,6 +119,7 @@ export default function Cart() {
                       <button
                         onClick={() => updateQuantity(item.id, item.cantidad - 1)}
                         className="p-1 bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+                        aria-label="Disminuir cantidad"
                       >
                         <Minus className="w-4 h-4" />
                       </button>
@@ -125,12 +129,14 @@ export default function Cart() {
                       <button
                         onClick={() => updateQuantity(item.id, item.cantidad + 1)}
                         className="p-1 bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+                        aria-label="Aumentar cantidad"
                       >
                         <Plus className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => removeFromCart(item.id)}
                         className="ml-auto p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
+                        aria-label="Eliminar del carrito"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -161,7 +167,7 @@ export default function Cart() {
             {/* Botones */}
             <button
               onClick={enviarPorWhatsApp}
-              className="w-full bg-[#25D366] hover:bg-[#20BA5A] text-white py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors shadow-md"
+              className="w-full bg-[#25D366] hover:bg-[#20BA5A] text-white py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors shadow-md hover:shadow-lg"
             >
               <svg
                 className="w-5 h-5"
@@ -182,6 +188,21 @@ export default function Cart() {
           </div>
         )}
       </div>
+
+      <style jsx>{`
+        @keyframes slide-in {
+          from {
+            transform: translateX(100%);
+          }
+          to {
+            transform: translateX(0);
+          }
+        }
+        
+        .animate-slide-in {
+          animation: slide-in 0.3s ease-out;
+        }
+      `}</style>
     </>
   );
 }
