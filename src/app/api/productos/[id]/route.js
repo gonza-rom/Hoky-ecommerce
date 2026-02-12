@@ -2,6 +2,47 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+/**
+ * Normaliza el campo imagenes de PostgreSQL a array JavaScript
+ */
+function normalizarImagenes(producto) {
+  let imagenes = [];
+  
+  if (Array.isArray(producto.imagenes)) {
+    imagenes = producto.imagenes;
+  } else if (typeof producto.imagenes === 'string' && producto.imagenes.length > 0) {
+    if (producto.imagenes.startsWith('{')) {
+      imagenes = producto.imagenes
+        .replace(/^\{/, '')
+        .replace(/\}$/, '')
+        .split(',')
+        .map(s => s.replace(/^"/, '').replace(/"$/, '').trim())
+        .filter(Boolean);
+    } else if (producto.imagenes.startsWith('[')) {
+      try {
+        imagenes = JSON.parse(producto.imagenes);
+      } catch (e) {
+        console.error('Error parsing imagenes JSON:', e);
+      }
+    } else if (producto.imagenes.startsWith('http')) {
+      imagenes = [producto.imagenes];
+    }
+  }
+
+  const imagenesValidas = imagenes.filter(
+    url => url && typeof url === 'string' && url.startsWith('http')
+  );
+
+  if (imagenesValidas.length === 0 && producto.imagen?.startsWith('http')) {
+    imagenesValidas.push(producto.imagen);
+  }
+
+  return {
+    ...producto,
+    imagenes: imagenesValidas
+  };
+}
+
 export async function GET(request, context) {
   try {
     const params = await context.params;
@@ -25,14 +66,8 @@ export async function GET(request, context) {
       return Response.json({ error: 'Producto no encontrado' }, { status: 404 });
     }
 
-    // ✅ Normalizar: asegurar que imagenes siempre sea un array
-    // y filtrar solo URLs válidas (no data URIs ni null)
-    const productoNormalizado = {
-      ...producto,
-      imagenes: Array.isArray(producto.imagenes)
-        ? producto.imagenes.filter(url => url && url.startsWith('http'))
-        : [],
-    };
+    // ✅ Normalizar imagenes
+    const productoNormalizado = normalizarImagenes(producto);
 
     return Response.json(productoNormalizado);
   } catch (error) {
