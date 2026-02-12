@@ -1,6 +1,4 @@
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/prisma";
 
 // Ruta temporal de debug - visitar /api/debug-imagenes en producción
 // BORRAR después de confirmar el problema
@@ -29,7 +27,5 @@ export async function GET() {
     return Response.json({ debug }, { status: 200 });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
-  } finally {
-    await prisma.$disconnect();
   }
 }

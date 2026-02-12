@@ -1,6 +1,4 @@
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/prisma";
 
 /**
  * Normaliza el campo imagenes de PostgreSQL a array JavaScript
@@ -73,7 +71,5 @@ export async function GET(request, context) {
   } catch (error) {
     console.error('Error al obtener producto:', error);
     return Response.json({ error: error.message }, { status: 500 });
-  } finally {
-    await prisma.$disconnect();
   }
 }
