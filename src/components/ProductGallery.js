@@ -2,14 +2,20 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
-import { ChevronLeft, ChevronRight, ShoppingBag, X, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ShoppingBag, X, ZoomIn, ZoomOut, Maximize2, AlertCircle } from 'lucide-react';
 
 export default function ProductGallery({ producto }) {
+  // 🔍 Filtrar data URIs y solo mantener URLs válidas
   const images = producto.imagenes && producto.imagenes.length > 0
-    ? producto.imagenes
-    : producto.imagen
+    ? producto.imagenes.filter(url => url && url.startsWith('http')) // Solo URLs válidas
+    : producto.imagen && producto.imagen.startsWith('http')
       ? [producto.imagen]
       : [];
+
+  // 🔍 Detectar si hay data URIs (imágenes base64 que no funcionan)
+  const hasDataUris = 
+    (producto.imagen && producto.imagen.startsWith('data:image/')) ||
+    (producto.imagenes && producto.imagenes.some(url => url && url.startsWith('data:image/')));
 
   const [imagenActual, setImagenActual] = useState(0);
   const [lightboxAbierto, setLightboxAbierto] = useState(false);
@@ -88,7 +94,6 @@ export default function ProductGallery({ producto }) {
 
   const handleMouseUp = () => setArrastrando(false);
 
-  // Teclado: flechas, Escape, +/-
   useEffect(() => {
     if (!lightboxAbierto) return;
     const handleKey = (e) => {
@@ -102,18 +107,48 @@ export default function ProductGallery({ producto }) {
     return () => window.removeEventListener('keydown', handleKey);
   }, [lightboxAbierto, cerrarLightbox, siguienteImagen, anteriorImagen]);
 
-  // Bloquear scroll del body cuando el lightbox está abierto
   useEffect(() => {
     document.body.style.overflow = lightboxAbierto ? 'hidden' : '';
     return () => { document.body.style.overflow = ''; };
   }, [lightboxAbierto]);
+
+  // 🔍 Mostrar advertencia si hay data URIs
+  if (hasDataUris && images.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="relative h-96 md:h-[500px] bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center p-8">
+          <div className="text-center max-w-md">
+            <AlertCircle className="w-16 h-16 text-orange-500 mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-orange-900 mb-3">
+              ⚠️ Imágenes No Disponibles
+            </h3>
+            <p className="text-orange-800 mb-4 text-sm">
+              Este producto tiene imágenes en formato <code className="bg-orange-200 px-1 rounded">data:image/base64</code> 
+              que no pueden mostrarse en la galería.
+            </p>
+            <div className="bg-orange-200 rounded-lg p-4 text-left text-xs text-orange-900 space-y-2">
+              <p className="font-semibold">🔧 Solución:</p>
+              <ol className="list-decimal list-inside space-y-1 ml-2">
+                <li>Sube las imágenes a Cloudinary</li>
+                <li>Edita el producto</li>
+                <li>Reemplaza las imágenes antiguas</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (images.length === 0) {
     return (
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         <div className="relative h-96 md:h-[500px] bg-gray-100">
           <div className="w-full h-full flex items-center justify-center">
-            <ShoppingBag className="w-32 h-32 text-gray-400" />
+            <div className="text-center">
+              <ShoppingBag className="w-32 h-32 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-500 font-medium">Sin imágenes disponibles</p>
+            </div>
           </div>
           {producto.stock <= producto.stockMinimo && producto.stock > 0 && (
             <div className="absolute top-4 right-4 bg-red-600 text-white px-4 py-2 rounded-lg font-semibold shadow-lg">
@@ -135,7 +170,18 @@ export default function ProductGallery({ producto }) {
       {/* ── Galería principal ── */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
 
-        {/* Imagen principal — clickeable para abrir lightbox */}
+        {/* 🔍 Advertencia si hay mezcla de URLs válidas y data URIs */}
+        {hasDataUris && images.length > 0 && (
+          <div className="bg-yellow-50 border-l-4 border-yellow-500 p-3 text-xs text-yellow-800 flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold">Algunas imágenes no se muestran</p>
+              <p>Este producto tiene imágenes en formato base64 que fueron omitidas. Considera reemplazarlas con URLs de Cloudinary.</p>
+            </div>
+          </div>
+        )}
+
+        {/* Imagen principal */}
         <div
           className="relative h-96 md:h-[500px] bg-gray-100 group cursor-zoom-in"
           onClick={abrirLightbox}
@@ -150,13 +196,11 @@ export default function ProductGallery({ producto }) {
             quality={90}
           />
 
-          {/* Hint de ampliar */}
           <div className="absolute bottom-4 right-4 bg-black/60 text-white px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
             <Maximize2 className="w-3.5 h-3.5" />
             Click para ampliar
           </div>
 
-          {/* Badges */}
           {producto.stock <= producto.stockMinimo && producto.stock > 0 && (
             <div className="absolute top-4 right-4 bg-red-600 text-white px-4 py-2 rounded-lg font-semibold shadow-lg z-10">
               ¡Últimas {producto.stock} unidades!
@@ -168,14 +212,12 @@ export default function ProductGallery({ producto }) {
             </div>
           )}
 
-          {/* Contador */}
           {images.length > 1 && (
             <div className="absolute top-4 left-4 bg-black/70 text-white px-3 py-1 rounded-lg text-sm font-semibold z-10">
               {imagenActual + 1} / {images.length}
             </div>
           )}
 
-          {/* Flechas (stopPropagation para no abrir lightbox) */}
           {images.length > 1 && (
             <>
               <button
@@ -238,7 +280,6 @@ export default function ProductGallery({ producto }) {
           className="fixed inset-0 z-50 bg-black/95 flex flex-col select-none"
           onClick={cerrarLightbox}
         >
-          {/* Barra superior */}
           <div
             className="flex items-center justify-between px-6 py-4 flex-shrink-0"
             onClick={(e) => e.stopPropagation()}
@@ -285,7 +326,6 @@ export default function ProductGallery({ producto }) {
             </div>
           </div>
 
-          {/* Imagen con zoom y arrastre */}
           <div
             className="flex-1 relative overflow-hidden flex items-center justify-center"
             onClick={(e) => { e.stopPropagation(); if (zoom === 1) cerrarLightbox(); }}
@@ -316,7 +356,6 @@ export default function ProductGallery({ producto }) {
               />
             </div>
 
-            {/* Flechas lightbox */}
             {images.length > 1 && (
               <>
                 <button
@@ -337,7 +376,6 @@ export default function ProductGallery({ producto }) {
             )}
           </div>
 
-          {/* Miniaturas en lightbox */}
           {images.length > 1 && (
             <div
               className="flex-shrink-0 px-6 py-4 flex justify-center gap-3 overflow-x-auto"
