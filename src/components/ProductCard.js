@@ -6,7 +6,6 @@ import { ShoppingBag, Eye } from 'lucide-react';
 import { getImagenesValidas } from './ProductGallery';
 
 export default function ProductCard({ producto, onAddToCart }) {
-  // ✅ Usa la misma función que ProductGallery para consistencia
   const images = getImagenesValidas(producto);
   const imagenPrincipal = images[0] || null;
 
@@ -28,7 +27,6 @@ export default function ProductCard({ producto, onAddToCart }) {
             </div>
           )}
           
-          {/* Badge de múltiples imágenes */}
           {images.length > 1 && (
             <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded shadow-lg font-semibold flex items-center gap-1">
               <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
@@ -46,9 +44,7 @@ export default function ProductCard({ producto, onAddToCart }) {
           
           {producto.stock === 0 && (
             <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-              <span className="bg-white text-gray-900 px-4 py-2 rounded-lg font-semibold">
-                Sin Stock
-              </span>
+              <span className="bg-white text-gray-900 px-4 py-2 rounded-lg font-semibold">Sin Stock</span>
             </div>
           )}
 
@@ -69,10 +65,7 @@ export default function ProductCard({ producto, onAddToCart }) {
         </Link>
         
         {producto.categoria && (
-          <Link 
-            href={`/productos?categoria=${producto.categoriaId}`}
-            className="text-xs text-gray-500 hover:text-jmr-green mb-2 inline-block"
-          >
+          <Link href={`/productos?categoria=${producto.categoriaId}`} className="text-xs text-gray-500 hover:text-jmr-green mb-2 inline-block">
             {producto.categoria.nombre}
           </Link>
         )}
@@ -83,10 +76,7 @@ export default function ProductCard({ producto, onAddToCart }) {
               ${producto.precio.toFixed(2)}
             </p>
             <button
-              onClick={(e) => {
-                e.preventDefault();
-                onAddToCart(producto, 1);
-              }}
+              onClick={(e) => { e.preventDefault(); onAddToCart(producto, 1); }}
               disabled={producto.stock === 0}
               className="bg-jmr-green hover:bg-jmr-green-dark text-white p-2 rounded-lg transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
               title={producto.stock === 0 ? 'Sin stock' : 'Agregar al carrito'}

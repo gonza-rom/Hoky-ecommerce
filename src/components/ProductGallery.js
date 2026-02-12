@@ -4,25 +4,63 @@ import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { ChevronLeft, ChevronRight, ShoppingBag, X, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 
-// ✅ Función helper para obtener URLs válidas (reutilizada en ProductCard también)
+/**
+ * Función robusta para obtener imágenes válidas de un producto.
+ * Maneja todos los casos posibles de producción:
+ * - imagenes como Array normal
+ * - imagenes como string JSON (ej: '["url1","url2"]')
+ * - imagenes como string de PostgreSQL (ej: '{url1,url2}')
+ * - imagenes null o undefined
+ * - imagenes vacío []
+ * - imagen principal como fallback
+ */
 export function getImagenesValidas(producto) {
-  const urls = [];
+  let urls = [];
 
-  // 1. Primero agregar las del array imagenes[]
-  if (Array.isArray(producto.imagenes)) {
-    for (const url of producto.imagenes) {
-      if (url && typeof url === 'string' && url.startsWith('http')) {
-        urls.push(url);
-      }
+  // --- Intentar parsear el campo imagenes ---
+  const raw = producto.imagenes;
+
+  if (Array.isArray(raw)) {
+    // Caso normal: ya es un array
+    urls = raw;
+  } else if (typeof raw === 'string' && raw.length > 0) {
+    // Caso: viene como string JSON ["url1","url2"]
+    if (raw.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) urls = parsed;
+      } catch {}
+    }
+    // Caso: viene como string de PostgreSQL {url1,url2}
+    else if (raw.startsWith('{')) {
+      urls = raw
+        .replace(/^\{/, '')
+        .replace(/\}$/, '')
+        .split(',')
+        .map(s => s.replace(/^"/, '').replace(/"$/, '').trim())
+        .filter(Boolean);
+    }
+    // Caso: viene como una sola URL directamente
+    else if (raw.startsWith('http')) {
+      urls = [raw];
     }
   }
 
-  // 2. Si no hay ninguna en el array, usar imagen principal
-  if (urls.length === 0 && producto.imagen && producto.imagen.startsWith('http')) {
-    urls.push(producto.imagen);
+  // Filtrar solo URLs HTTP válidas (descartar base64, nulls, strings vacíos)
+  const validas = urls.filter(
+    url => url && typeof url === 'string' && url.startsWith('http')
+  );
+
+  // Si no hay ninguna válida, usar imagen principal como fallback
+  if (validas.length === 0) {
+    const imgPrincipal = producto.imagen;
+    if (imgPrincipal && typeof imgPrincipal === 'string' && imgPrincipal.startsWith('http')) {
+      return [imgPrincipal];
+    }
+    return [];
   }
 
-  return urls;
+  return validas;
 }
 
 export default function ProductGallery({ producto }) {
@@ -63,23 +101,16 @@ export default function ProductGallery({ producto }) {
   const aumentarZoom = () => setZoom((prev) => Math.min(prev + 0.5, 4));
   const reducirZoom = () => {
     setZoom((prev) => {
-      const nuevoZoom = Math.max(prev - 0.5, 1);
-      if (nuevoZoom === 1) setPosicion({ x: 0, y: 0 });
-      return nuevoZoom;
+      const n = Math.max(prev - 0.5, 1);
+      if (n === 1) setPosicion({ x: 0, y: 0 });
+      return n;
     });
   };
 
   const handleWheel = (e) => {
     e.preventDefault();
-    if (e.deltaY < 0) {
-      setZoom((prev) => Math.min(prev + 0.25, 4));
-    } else {
-      setZoom((prev) => {
-        const nuevoZoom = Math.max(prev - 0.25, 1);
-        if (nuevoZoom === 1) setPosicion({ x: 0, y: 0 });
-        return nuevoZoom;
-      });
-    }
+    if (e.deltaY < 0) setZoom((p) => Math.min(p + 0.25, 4));
+    else setZoom((p) => { const n = Math.max(p - 0.25, 1); if (n === 1) setPosicion({ x: 0, y: 0 }); return n; });
   };
 
   const handleMouseDown = (e) => {
@@ -88,29 +119,23 @@ export default function ProductGallery({ producto }) {
       setInicioArrastre({ x: e.clientX - posicion.x, y: e.clientY - posicion.y });
     }
   };
-
   const handleMouseMove = (e) => {
-    if (arrastrando && zoom > 1) {
-      setPosicion({
-        x: e.clientX - inicioArrastre.x,
-        y: e.clientY - inicioArrastre.y,
-      });
-    }
+    if (arrastrando && zoom > 1)
+      setPosicion({ x: e.clientX - inicioArrastre.x, y: e.clientY - inicioArrastre.y });
   };
-
   const handleMouseUp = () => setArrastrando(false);
 
   useEffect(() => {
     if (!lightboxAbierto) return;
-    const handleKey = (e) => {
+    const fn = (e) => {
       if (e.key === 'Escape') cerrarLightbox();
       if (e.key === 'ArrowRight') siguienteImagen();
       if (e.key === 'ArrowLeft') anteriorImagen();
       if (e.key === '+' || e.key === '=') aumentarZoom();
       if (e.key === '-') reducirZoom();
     };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
+    window.addEventListener('keydown', fn);
+    return () => window.removeEventListener('keydown', fn);
   }, [lightboxAbierto, cerrarLightbox, siguienteImagen, anteriorImagen]);
 
   useEffect(() => {
@@ -118,7 +143,7 @@ export default function ProductGallery({ producto }) {
     return () => { document.body.style.overflow = ''; };
   }, [lightboxAbierto]);
 
-  // Sin imágenes válidas
+  // Sin imágenes
   if (images.length === 0) {
     return (
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
@@ -164,13 +189,11 @@ export default function ProductGallery({ producto }) {
             quality={90}
           />
 
-          {/* Hint de ampliar */}
           <div className="absolute bottom-4 right-4 bg-black/60 text-white px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
             <Maximize2 className="w-3.5 h-3.5" />
             Click para ampliar
           </div>
 
-          {/* Badges */}
           {producto.stock <= producto.stockMinimo && producto.stock > 0 && (
             <div className="absolute top-4 right-4 bg-red-600 text-white px-4 py-2 rounded-lg font-semibold shadow-lg z-10">
               ¡Últimas {producto.stock} unidades!
@@ -182,27 +205,23 @@ export default function ProductGallery({ producto }) {
             </div>
           )}
 
-          {/* Contador */}
           {images.length > 1 && (
             <div className="absolute top-4 left-4 bg-black/70 text-white px-3 py-1 rounded-lg text-sm font-semibold z-10">
               {imagenActual + 1} / {images.length}
             </div>
           )}
 
-          {/* Flechas de navegación */}
           {images.length > 1 && (
             <>
               <button
                 onClick={(e) => { e.stopPropagation(); anteriorImagen(); }}
                 className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-gray-900 p-3 rounded-full shadow-lg transition-all opacity-0 group-hover:opacity-100 z-10"
-                aria-label="Imagen anterior"
               >
                 <ChevronLeft className="w-6 h-6" />
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); siguienteImagen(); }}
                 className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-gray-900 p-3 rounded-full shadow-lg transition-all opacity-0 group-hover:opacity-100 z-10"
-                aria-label="Siguiente imagen"
               >
                 <ChevronRight className="w-6 h-6" />
               </button>
@@ -252,7 +271,6 @@ export default function ProductGallery({ producto }) {
           className="fixed inset-0 z-50 bg-black/95 flex flex-col select-none"
           onClick={cerrarLightbox}
         >
-          {/* Header del lightbox */}
           <div
             className="flex items-center justify-between px-6 py-4 flex-shrink-0"
             onClick={(e) => e.stopPropagation()}
@@ -263,39 +281,23 @@ export default function ProductGallery({ producto }) {
                 <span className="ml-2 text-white/40">{imagenActual + 1} / {images.length}</span>
               )}
             </span>
-
             <div className="flex items-center gap-2">
-              <button
-                onClick={reducirZoom}
-                disabled={zoom <= 1}
-                className="bg-white/10 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed text-white p-2 rounded-lg transition-colors"
-              >
+              <button onClick={reducirZoom} disabled={zoom <= 1} className="bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white p-2 rounded-lg transition-colors">
                 <ZoomOut className="w-5 h-5" />
               </button>
-              <button
-                onClick={resetZoom}
-                className="bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-lg text-sm font-semibold transition-colors min-w-[52px] text-center"
-              >
+              <button onClick={resetZoom} className="bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-lg text-sm font-semibold transition-colors min-w-[52px] text-center">
                 {Math.round(zoom * 100)}%
               </button>
-              <button
-                onClick={aumentarZoom}
-                disabled={zoom >= 4}
-                className="bg-white/10 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed text-white p-2 rounded-lg transition-colors"
-              >
+              <button onClick={aumentarZoom} disabled={zoom >= 4} className="bg-white/10 hover:bg-white/20 disabled:opacity-30 text-white p-2 rounded-lg transition-colors">
                 <ZoomIn className="w-5 h-5" />
               </button>
               <div className="w-px h-6 bg-white/20 mx-1" />
-              <button
-                onClick={cerrarLightbox}
-                className="bg-white/10 hover:bg-white/20 text-white p-2 rounded-lg transition-colors"
-              >
+              <button onClick={cerrarLightbox} className="bg-white/10 hover:bg-white/20 text-white p-2 rounded-lg transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
           </div>
 
-          {/* Imagen en lightbox */}
           <div
             className="flex-1 relative overflow-hidden flex items-center justify-center"
             onClick={(e) => { e.stopPropagation(); if (zoom === 1) cerrarLightbox(); }}
@@ -310,9 +312,7 @@ export default function ProductGallery({ producto }) {
               style={{
                 transform: `scale(${zoom}) translate(${posicion.x / zoom}px, ${posicion.y / zoom}px)`,
                 transition: arrastrando ? 'none' : 'transform 0.2s ease',
-                position: 'relative',
-                width: '100%',
-                height: '100%',
+                position: 'relative', width: '100%', height: '100%',
               }}
             >
               <Image
@@ -328,23 +328,16 @@ export default function ProductGallery({ producto }) {
 
             {images.length > 1 && (
               <>
-                <button
-                  onClick={(e) => { e.stopPropagation(); anteriorImagen(); }}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/25 text-white p-4 rounded-full transition-all z-10"
-                >
+                <button onClick={(e) => { e.stopPropagation(); anteriorImagen(); }} className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/25 text-white p-4 rounded-full z-10">
                   <ChevronLeft className="w-8 h-8" />
                 </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); siguienteImagen(); }}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/25 text-white p-4 rounded-full transition-all z-10"
-                >
+                <button onClick={(e) => { e.stopPropagation(); siguienteImagen(); }} className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/25 text-white p-4 rounded-full z-10">
                   <ChevronRight className="w-8 h-8" />
                 </button>
               </>
             )}
           </div>
 
-          {/* Miniaturas en lightbox */}
           {images.length > 1 && (
             <div
               className="flex-shrink-0 px-6 py-4 flex justify-center gap-3 overflow-x-auto"
@@ -355,27 +348,17 @@ export default function ProductGallery({ producto }) {
                   key={index}
                   onClick={() => { setImagenActual(index); resetZoom(); }}
                   className={`relative flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
-                    index === imagenActual
-                      ? 'border-white scale-110'
-                      : 'border-white/30 hover:border-white/60 opacity-60 hover:opacity-100'
+                    index === imagenActual ? 'border-white scale-110' : 'border-white/30 hover:border-white/60 opacity-60 hover:opacity-100'
                   }`}
                 >
-                  <Image
-                    src={imagen}
-                    alt={`Miniatura ${index + 1}`}
-                    fill
-                    className="object-cover"
-                    sizes="64px"
-                  />
+                  <Image src={imagen} alt={`Miniatura ${index + 1}`} fill className="object-cover" sizes="64px" />
                 </button>
               ))}
             </div>
           )}
 
           <div className="flex-shrink-0 pb-4 text-center pointer-events-none">
-            <p className="text-white/25 text-xs">
-              Esc o click para cerrar · ← → para navegar · Rueda o +/− para zoom
-            </p>
+            <p className="text-white/25 text-xs">Esc o click para cerrar · ← → navegar · rueda para zoom</p>
           </div>
         </div>
       )}
