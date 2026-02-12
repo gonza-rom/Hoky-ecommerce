@@ -2,20 +2,31 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
-import { ChevronLeft, ChevronRight, ShoppingBag, X, ZoomIn, ZoomOut, Maximize2, AlertCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ShoppingBag, X, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
+
+// ✅ Función helper para obtener URLs válidas (reutilizada en ProductCard también)
+export function getImagenesValidas(producto) {
+  const urls = [];
+
+  // 1. Primero agregar las del array imagenes[]
+  if (Array.isArray(producto.imagenes)) {
+    for (const url of producto.imagenes) {
+      if (url && typeof url === 'string' && url.startsWith('http')) {
+        urls.push(url);
+      }
+    }
+  }
+
+  // 2. Si no hay ninguna en el array, usar imagen principal
+  if (urls.length === 0 && producto.imagen && producto.imagen.startsWith('http')) {
+    urls.push(producto.imagen);
+  }
+
+  return urls;
+}
 
 export default function ProductGallery({ producto }) {
-  // 🔍 Filtrar data URIs y solo mantener URLs válidas
-  const images = producto.imagenes && producto.imagenes.length > 0
-    ? producto.imagenes.filter(url => url && url.startsWith('http')) // Solo URLs válidas
-    : producto.imagen && producto.imagen.startsWith('http')
-      ? [producto.imagen]
-      : [];
-
-  // 🔍 Detectar si hay data URIs (imágenes base64 que no funcionan)
-  const hasDataUris = 
-    (producto.imagen && producto.imagen.startsWith('data:image/')) ||
-    (producto.imagenes && producto.imagenes.some(url => url && url.startsWith('data:image/')));
+  const images = getImagenesValidas(producto);
 
   const [imagenActual, setImagenActual] = useState(0);
   const [lightboxAbierto, setLightboxAbierto] = useState(false);
@@ -24,43 +35,38 @@ export default function ProductGallery({ producto }) {
   const [arrastrando, setArrastrando] = useState(false);
   const [inicioArrastre, setInicioArrastre] = useState({ x: 0, y: 0 });
 
-  const abrirLightbox = () => {
-    setLightboxAbierto(true);
-    setZoom(1);
-    setPosicion({ x: 0, y: 0 });
-  };
-
-  const cerrarLightbox = useCallback(() => {
-    setLightboxAbierto(false);
+  const resetZoom = useCallback(() => {
     setZoom(1);
     setPosicion({ x: 0, y: 0 });
   }, []);
 
+  const abrirLightbox = () => {
+    setLightboxAbierto(true);
+    resetZoom();
+  };
+
+  const cerrarLightbox = useCallback(() => {
+    setLightboxAbierto(false);
+    resetZoom();
+  }, [resetZoom]);
+
   const siguienteImagen = useCallback(() => {
     setImagenActual((prev) => (prev + 1) % images.length);
-    setZoom(1);
-    setPosicion({ x: 0, y: 0 });
-  }, [images.length]);
+    resetZoom();
+  }, [images.length, resetZoom]);
 
   const anteriorImagen = useCallback(() => {
     setImagenActual((prev) => (prev - 1 + images.length) % images.length);
-    setZoom(1);
-    setPosicion({ x: 0, y: 0 });
-  }, [images.length]);
+    resetZoom();
+  }, [images.length, resetZoom]);
 
   const aumentarZoom = () => setZoom((prev) => Math.min(prev + 0.5, 4));
-
   const reducirZoom = () => {
     setZoom((prev) => {
       const nuevoZoom = Math.max(prev - 0.5, 1);
       if (nuevoZoom === 1) setPosicion({ x: 0, y: 0 });
       return nuevoZoom;
     });
-  };
-
-  const resetZoom = () => {
-    setZoom(1);
-    setPosicion({ x: 0, y: 0 });
   };
 
   const handleWheel = (e) => {
@@ -112,34 +118,7 @@ export default function ProductGallery({ producto }) {
     return () => { document.body.style.overflow = ''; };
   }, [lightboxAbierto]);
 
-  // 🔍 Mostrar advertencia si hay data URIs
-  if (hasDataUris && images.length === 0) {
-    return (
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="relative h-96 md:h-[500px] bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center p-8">
-          <div className="text-center max-w-md">
-            <AlertCircle className="w-16 h-16 text-orange-500 mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-orange-900 mb-3">
-              ⚠️ Imágenes No Disponibles
-            </h3>
-            <p className="text-orange-800 mb-4 text-sm">
-              Este producto tiene imágenes en formato <code className="bg-orange-200 px-1 rounded">data:image/base64</code> 
-              que no pueden mostrarse en la galería.
-            </p>
-            <div className="bg-orange-200 rounded-lg p-4 text-left text-xs text-orange-900 space-y-2">
-              <p className="font-semibold">🔧 Solución:</p>
-              <ol className="list-decimal list-inside space-y-1 ml-2">
-                <li>Sube las imágenes a Cloudinary</li>
-                <li>Edita el producto</li>
-                <li>Reemplaza las imágenes antiguas</li>
-              </ol>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
+  // Sin imágenes válidas
   if (images.length === 0) {
     return (
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
@@ -170,17 +149,6 @@ export default function ProductGallery({ producto }) {
       {/* ── Galería principal ── */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
 
-        {/* 🔍 Advertencia si hay mezcla de URLs válidas y data URIs */}
-        {hasDataUris && images.length > 0 && (
-          <div className="bg-yellow-50 border-l-4 border-yellow-500 p-3 text-xs text-yellow-800 flex items-start gap-2">
-            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-semibold">Algunas imágenes no se muestran</p>
-              <p>Este producto tiene imágenes en formato base64 que fueron omitidas. Considera reemplazarlas con URLs de Cloudinary.</p>
-            </div>
-          </div>
-        )}
-
         {/* Imagen principal */}
         <div
           className="relative h-96 md:h-[500px] bg-gray-100 group cursor-zoom-in"
@@ -196,11 +164,13 @@ export default function ProductGallery({ producto }) {
             quality={90}
           />
 
+          {/* Hint de ampliar */}
           <div className="absolute bottom-4 right-4 bg-black/60 text-white px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
             <Maximize2 className="w-3.5 h-3.5" />
             Click para ampliar
           </div>
 
+          {/* Badges */}
           {producto.stock <= producto.stockMinimo && producto.stock > 0 && (
             <div className="absolute top-4 right-4 bg-red-600 text-white px-4 py-2 rounded-lg font-semibold shadow-lg z-10">
               ¡Últimas {producto.stock} unidades!
@@ -212,12 +182,14 @@ export default function ProductGallery({ producto }) {
             </div>
           )}
 
+          {/* Contador */}
           {images.length > 1 && (
             <div className="absolute top-4 left-4 bg-black/70 text-white px-3 py-1 rounded-lg text-sm font-semibold z-10">
               {imagenActual + 1} / {images.length}
             </div>
           )}
 
+          {/* Flechas de navegación */}
           {images.length > 1 && (
             <>
               <button
@@ -241,7 +213,7 @@ export default function ProductGallery({ producto }) {
         {/* Miniaturas */}
         {images.length > 1 && (
           <div className="p-4 bg-gray-50">
-            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300">
+            <div className="flex gap-2 overflow-x-auto pb-2">
               {images.map((imagen, index) => (
                 <button
                   key={index}
@@ -280,6 +252,7 @@ export default function ProductGallery({ producto }) {
           className="fixed inset-0 z-50 bg-black/95 flex flex-col select-none"
           onClick={cerrarLightbox}
         >
+          {/* Header del lightbox */}
           <div
             className="flex items-center justify-between px-6 py-4 flex-shrink-0"
             onClick={(e) => e.stopPropagation()}
@@ -296,14 +269,12 @@ export default function ProductGallery({ producto }) {
                 onClick={reducirZoom}
                 disabled={zoom <= 1}
                 className="bg-white/10 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed text-white p-2 rounded-lg transition-colors"
-                title="Reducir zoom (−)"
               >
                 <ZoomOut className="w-5 h-5" />
               </button>
               <button
                 onClick={resetZoom}
                 className="bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-lg text-sm font-semibold transition-colors min-w-[52px] text-center"
-                title="Restablecer zoom"
               >
                 {Math.round(zoom * 100)}%
               </button>
@@ -311,7 +282,6 @@ export default function ProductGallery({ producto }) {
                 onClick={aumentarZoom}
                 disabled={zoom >= 4}
                 className="bg-white/10 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed text-white p-2 rounded-lg transition-colors"
-                title="Aumentar zoom (+)"
               >
                 <ZoomIn className="w-5 h-5" />
               </button>
@@ -319,13 +289,13 @@ export default function ProductGallery({ producto }) {
               <button
                 onClick={cerrarLightbox}
                 className="bg-white/10 hover:bg-white/20 text-white p-2 rounded-lg transition-colors"
-                title="Cerrar (Esc)"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
           </div>
 
+          {/* Imagen en lightbox */}
           <div
             className="flex-1 relative overflow-hidden flex items-center justify-center"
             onClick={(e) => { e.stopPropagation(); if (zoom === 1) cerrarLightbox(); }}
@@ -361,14 +331,12 @@ export default function ProductGallery({ producto }) {
                 <button
                   onClick={(e) => { e.stopPropagation(); anteriorImagen(); }}
                   className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/25 text-white p-4 rounded-full transition-all z-10"
-                  aria-label="Imagen anterior"
                 >
                   <ChevronLeft className="w-8 h-8" />
                 </button>
                 <button
                   onClick={(e) => { e.stopPropagation(); siguienteImagen(); }}
                   className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/25 text-white p-4 rounded-full transition-all z-10"
-                  aria-label="Siguiente imagen"
                 >
                   <ChevronRight className="w-8 h-8" />
                 </button>
@@ -376,6 +344,7 @@ export default function ProductGallery({ producto }) {
             )}
           </div>
 
+          {/* Miniaturas en lightbox */}
           {images.length > 1 && (
             <div
               className="flex-shrink-0 px-6 py-4 flex justify-center gap-3 overflow-x-auto"

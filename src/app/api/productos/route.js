@@ -12,16 +12,14 @@ export async function GET(request) {
 
     let where = {
       stock: {
-        gt: 0, // Solo productos con stock disponible
+        gt: 0,
       },
     };
 
-    // Filtrar por categoría
     if (categoria) {
       where.categoriaId = parseInt(categoria);
     }
 
-    // Filtrar por búsqueda
     if (busqueda) {
       where.OR = [
         { nombre: { contains: busqueda, mode: 'insensitive' } },
@@ -41,7 +39,15 @@ export async function GET(request) {
       },
     });
 
-    // Si se piden destacados, tomar los más vendidos o más recientes
+    // ✅ Normalizar: asegurar que imagenes siempre sea un array
+    // y filtrar solo URLs válidas (no data URIs)
+    productos = productos.map(p => ({
+      ...p,
+      imagenes: Array.isArray(p.imagenes)
+        ? p.imagenes.filter(url => url && url.startsWith('http'))
+        : [],
+    }));
+
     if (destacados === 'true' && limit) {
       productos = productos.slice(0, parseInt(limit));
     }

@@ -3,18 +3,12 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { ShoppingBag, Eye } from 'lucide-react';
+import { getImagenesValidas } from './ProductGallery';
 
 export default function ProductCard({ producto, onAddToCart }) {
-  // Obtener la imagen principal del producto
-  const getImagenPrincipal = () => {
-    // Prioridad: usar el primer elemento de imagenes[], luego imagen, luego null
-    if (producto.imagenes && producto.imagenes.length > 0) {
-      return producto.imagenes[0];
-    }
-    return producto.imagen || null;
-  };
-
-  const imagenPrincipal = getImagenPrincipal();
+  // ✅ Usa la misma función que ProductGallery para consistencia
+  const images = getImagenesValidas(producto);
+  const imagenPrincipal = images[0] || null;
 
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col group">
@@ -35,12 +29,12 @@ export default function ProductCard({ producto, onAddToCart }) {
           )}
           
           {/* Badge de múltiples imágenes */}
-          {producto.imagenes && producto.imagenes.length > 1 && (
+          {images.length > 1 && (
             <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded shadow-lg font-semibold flex items-center gap-1">
               <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
               </svg>
-              {producto.imagenes.length}
+              {images.length}
             </div>
           )}
           
