@@ -9,85 +9,395 @@ datasource db {
 }
 
 model Categoria {
-  id          Int        @id @default(autoincrement())
-  nombre      String     @unique
+  id          String     @id
+  tenantId    String
+  nombre      String
   descripcion String?
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
+  Tenant      Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   productos   Producto[]
+
+  @@unique([tenantId, nombre])
+  @@index([tenantId])
 }
 
 model Proveedor {
-  id        Int        @id @default(autoincrement())
+  id        String     @id
+  tenantId  String
   nombre    String
   telefono  String?
-  email     String?    @unique
+  email     String?
   direccion String?
+  notas     String?
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
   productos Producto[]
+  Tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([email])
+  @@index([tenantId])
 }
 
 model Producto {
-  id              Int                @id @default(autoincrement())
+  id              String            @id
+  tenantId        String
   nombre          String
   descripcion     String?
-  codigoProducto  String?            @unique
+  codigoProducto  String?
+  codigoBarras    String?
   precio          Float
-  stock           Int                @default(0)
-  stockMinimo     Int                @default(5)
-  imagen          String?            // Imagen principal (mantener por compatibilidad)
-  imagenes        String[]           // Array de URLs de imágenes para galería
-  codigoBarras    String?            @unique
-  categoriaId     Int
-  proveedorId     Int
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
-  categoria       Categoria          @relation(fields: [categoriaId], references: [id])
-  proveedor       Proveedor          @relation(fields: [proveedorId], references: [id])
+  costo           Float?
+  stock           Int               @default(0)
+  stockMinimo     Int               @default(5)
+  unidad          String?
+  imagen          String?
+  imagenes        String[]          @default([])
+  activo          Boolean           @default(true)
+  categoriaId     String?
+  proveedorId     String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
   movimientos     Movimiento[]
-  ventaItems      VentaItem[]
   precioHistorico PrecioHistorico[]
+  categoria       Categoria?        @relation(fields: [categoriaId], references: [id])
+  proveedor       Proveedor?        @relation(fields: [proveedorId], references: [id])
+  Tenant          Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  ventaItems      VentaItem[]
+
+  @@unique([tenantId, codigoBarras])
+  @@unique([tenantId, codigoProducto])
+  @@index([categoriaId])
+  @@index([codigoBarras])
+  @@index([proveedorId])
+  @@index([tenantId, activo])
+  @@index([tenantId, activo, nombre])
+  @@index([tenantId, activo, stock])
+  @@index([tenantId, categoriaId])
+  @@index([tenantId])
+  @@index([tenantId, nombre])
+  @@index([tenantId, stock])
 }
 
 model Movimiento {
-  id          Int      @id @default(autoincrement())
-  productoId  Int
-  tipo        String
-  cantidad    Int
-  motivo      String?
-  createdAt   DateTime @default(now())
-  producto    Producto @relation(fields: [productoId], references: [id])
+  id                String         @id
+  tenantId          String
+  productoId        String
+  productoNombre    String
+  tipo              TipoMovimiento
+  cantidad          Int
+  stockAnterior     Int?
+  stockResultante   Int?
+  motivo            String?
+  ventaId           String?
+  usuarioId         String?
+  usuarioNombre     String?
+  cancelado         Boolean        @default(false)
+  motivoCancelacion String?
+  canceladoPor      String?
+  canceladoAt       DateTime?
+  createdAt         DateTime       @default(now())
+  producto          Producto       @relation(fields: [productoId], references: [id])
+  Tenant            Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  Venta             Venta?         @relation(fields: [ventaId], references: [id])
+
+  @@index([productoId, createdAt])
+  @@index([tenantId, cancelado, createdAt])
+  @@index([tenantId, createdAt(sort: Desc)], map: "Movimiento_tenantId_createdAt_desc_idx")
+  @@index([tenantId, createdAt])
+  @@index([tenantId])
+  @@index([tenantId, productoId])
+  @@index([tenantId, tipo, createdAt])
+  @@index([tenantId, tipo])
+  @@index([ventaId])
 }
 
 model Venta {
-  id            Int         @id @default(autoincrement())
-  total         Float
-  metodoPago    String
-  clienteNombre String?
-  clienteDni    String?
-  observaciones String?
-  createdAt     DateTime    @default(now())
-  items         VentaItem[]
+  id                String        @id
+  tenantId          String
+  total             Float
+  subtotal          Float?
+  descuento         Float?        @default(0)
+  metodoPago        String
+  clienteNombre     String?
+  clienteDni        String?
+  observaciones     String?
+  usuarioId         String?
+  usuarioNombre     String?
+  createdAt         DateTime      @default(now())
+  cancelado         Boolean       @default(false)
+  canceladoAt       DateTime?
+  motivoCancelacion String?
+  Movimiento        Movimiento[]
+  Tenant            Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  items             VentaItem[]
+  comprobantes      comprobantes?
+
+  @@index([clienteDni])
+  @@index([clienteNombre])
+  @@index([tenantId, cancelado])
+  @@index([tenantId, createdAt(sort: Desc)], map: "Venta_tenantId_createdAt_desc_idx")
+  @@index([tenantId, createdAt])
+  @@index([tenantId])
+  @@index([tenantId, metodoPago, createdAt])
+  @@index([tenantId, metodoPago])
+  @@index([tenantId, usuarioId])
 }
 
 model VentaItem {
-  id         Int      @id @default(autoincrement())
-  ventaId    Int
-  productoId Int
+  id         String    @id
+  ventaId    String
+  productoId String?
+  nombre     String
   cantidad   Int
   precioUnit Float
   subtotal   Float
-  venta      Venta    @relation(fields: [ventaId], references: [id], onDelete: Cascade)
-  producto   Producto @relation(fields: [productoId], references: [id])
+  producto   Producto? @relation(fields: [productoId], references: [id])
+  venta      Venta     @relation(fields: [ventaId], references: [id], onDelete: Cascade)
+
+  @@index([productoId])
+  @@index([productoId, ventaId])
+  @@index([ventaId])
+  @@index([ventaId, productoId])
 }
 
 model PrecioHistorico {
-  id          Int      @id @default(autoincrement())
-  productoId  Int
+  id          String   @id
+  tenantId    String
+  productoId  String
   precioViejo Float
   precioNuevo Float
   motivo      String?
+  usuarioId   String?
   createdAt   DateTime @default(now())
-  producto    Producto @relation(fields: [productoId], references: [id])
+  producto    Producto @relation(fields: [productoId], references: [id], onDelete: Cascade)
+  Tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([productoId])
+  @@index([tenantId])
+}
+
+model Caja {
+  id             String           @id
+  tenantId       String
+  usuarioId      String?
+  usuarioNombre  String?
+  saldoInicial   Float
+  saldoFinal     Float?
+  saldoContado   Float?
+  diferencia     Float?
+  observaciones  String?
+  abiertaAt      DateTime         @default(now())
+  cerradaAt      DateTime?
+  estado         String           @default("ABIERTA")
+  turno          String?
+  Tenant         Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  MovimientoCaja MovimientoCaja[]
+
+  @@index([tenantId, abiertaAt])
+  @@index([tenantId, cerradaAt(sort: Desc)], map: "Caja_tenantId_cerradaAt_desc_idx")
+  @@index([tenantId, estado, abiertaAt])
+  @@index([tenantId, estado])
+  @@index([tenantId])
+}
+
+model ConfiguracionTurnos {
+  id           String   @id
+  tenantId     String   @unique
+  mananaInicio String
+  mananaFin    String
+  tardeInicio  String
+  tardeFin     String
+  nocheInicio  String?
+  nocheFin     String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime
+}
+
+model MovimientoCaja {
+  id            String             @id
+  tenantId      String
+  cajaId        String
+  tipo          TipoMovimientoCaja
+  monto         Float
+  descripcion   String?
+  ventaId       String?
+  usuarioId     String?
+  usuarioNombre String?
+  createdAt     DateTime           @default(now())
+  metodoPago    String?
+  Caja          Caja               @relation(fields: [cajaId], references: [id], onDelete: Cascade)
+
+  @@index([cajaId, createdAt])
+  @@index([cajaId])
+  @@index([cajaId, tipo])
+  @@index([tenantId, createdAt])
+  @@index([tenantId])
+  @@index([ventaId])
+}
+
+model Suscripcion {
+  id                 String    @id
+  tenantId           String    @unique
+  plan               PlanTipo
+  estado             String    @default("pending")
+  mpPreapprovalId    String?
+  mpSubscriptionId   String?
+  proximoVencimiento DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime
+  Tenant             Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([estado])
+  @@index([proximoVencimiento])
+}
+
+model Tenant {
+  id                   String                @id
+  nombre               String
+  email                String                @unique
+  slug                 String                @unique
+  logoUrl              String?
+  telefono             String?
+  direccion            String?
+  ciudad               String?
+  plan                 PlanTipo              @default(FREE)
+  activo               Boolean               @default(true)
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime
+  cuit                 String?
+  descripcion          String?
+  facebook             String?
+  instagram            String?
+  provincia            String?
+  sitioWeb             String?
+  trialVenceAt         DateTime?
+  horariosTurnos       Json?
+  Caja                 Caja[]
+  Categoria            Categoria[]
+  Movimiento           Movimiento[]
+  PrecioHistorico      PrecioHistorico[]
+  Producto             Producto[]
+  Proveedor            Proveedor[]
+  Suscripcion          Suscripcion?
+  UsuarioTenant        UsuarioTenant[]
+  Venta                Venta[]
+  comprobantes         comprobantes[]
+  configuraciones_afip configuraciones_afip?
+
+  @@index([activo])
+  @@index([createdAt])
+  @@index([plan])
+}
+
+model UsuarioTenant {
+  id         String    @id
+  tenantId   String
+  supabaseId String    @unique
+  nombre     String
+  email      String
+  rol        RolTenant @default(EMPLEADO)
+  activo     Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime
+  Tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, email])
+  @@index([email])
+  @@index([supabaseId])
+  @@index([tenantId, activo])
+  @@index([tenantId])
+  @@index([tenantId, rol])
+}
+
+model comprobantes {
+  id                String   @id
+  tenantId          String
+  ventaId           String?  @unique
+  puntoVenta        Int
+  tipoComprobante   Int
+  numeroComprobante Int
+  cae               String
+  caeFchVto         String
+  qrData            String?
+  docTipo           Int      @default(99)
+  docNro            BigInt   @default(0)
+  clienteNombre     String?
+  clienteEmail      String?
+  clienteDireccion  String?
+  total             Float
+  neto              Float
+  iva               Float
+  descuento         Float    @default(0)
+  importeNoGravado  Float    @default(0)
+  importeExento     Float    @default(0)
+  importeTributos   Float    @default(0)
+  monedaId          String   @default("PES")
+  monedaCotizacion  Float    @default(1)
+  ivaDetalle        Json?
+  items             Json
+  fecha             DateTime
+  resultado         String   @default("A")
+  observaciones     String?
+  concepto          Int      @default(1)
+  metodoPago        String?
+  usuarioId         String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime
+  Tenant            Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  Venta             Venta?   @relation(fields: [ventaId], references: [id])
+
+  @@index([cae])
+  @@index([fecha])
+  @@index([numeroComprobante, puntoVenta, tipoComprobante])
+  @@index([tenantId])
+  @@index([ventaId])
+}
+
+model configuraciones_afip {
+  id              String    @id
+  tenantId        String    @unique
+  cuit            String
+  razonSocial     String?
+  puntoVenta      Int       @default(1)
+  condicionFiscal String    @default("MT")
+  certificado     String
+  clavePrivada    String
+  ambiente        String    @default("testing")
+  activo          Boolean   @default(true)
+  ultimaConexion  DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime
+  Tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+}
+
+enum PlanTipo {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
+enum RolTenant {
+  PROPIETARIO
+  ADMINISTRADOR
+  EMPLEADO
+}
+
+enum TipoMovimiento {
+  ENTRADA
+  SALIDA
+  VENTA
+  AJUSTE
+}
+
+enum TipoMovimientoCaja {
+  APERTURA
+  VENTA_EFECTIVO
+  INGRESO
+  EGRESO
+  CIERRE
+  VENTA_VIRTUAL
 }
