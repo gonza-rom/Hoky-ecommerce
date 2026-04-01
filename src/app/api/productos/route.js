@@ -1,7 +1,7 @@
 // src/app/api/productos/route.js
 import { prisma, TENANT_ID } from "@/lib/prisma";
 
-export const revalidate = 60;
+export const revalidate = 0;
 
 function normalizarImagenes(producto) {
   let imagenes = [];
@@ -67,7 +67,7 @@ export async function GET(request) {
         min: Math.floor(minResult?.precio ?? 0),
         max: Math.ceil(maxResult?.precio ?? 100000),
       });
-    }
+    } 
 
     const destacados = searchParams.get("destacados") === "true";
 
@@ -134,3 +134,5 @@ export async function GET(request) {
     return Response.json({ error: error.message }, { status: 500 });
   }
 }
+
+export const dynamic = 'force-dynamic'; // ← AGREGAR ESTA LÍNEA

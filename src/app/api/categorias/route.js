@@ -7,7 +7,7 @@
 
 import { prisma, TENANT_ID } from "@/lib/prisma";
  
-export const revalidate = 300;
+export const revalidate = 0;
  
 export async function GET() {
   try {
@@ -35,3 +35,4 @@ export async function GET() {
     return Response.json({ error: error.message }, { status: 500 });
   }
 }
+
