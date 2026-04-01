@@ -2,50 +2,63 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Fuente de marca ── */
+/* Si tenés el archivo de Afical Neue Extra Bold, colocalo en /public/fonts/ */
+@font-face {
+  font-family: 'AficalNeueBold';
+  src: url('/fonts/AficalNeue-ExtraBold.woff2') format('woff2'),
+       url('/fonts/AficalNeue-ExtraBold.woff') format('woff');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --background: #ffffff;
-  --foreground: #171717;
-  --jmr-primary: #16a34a;
-  --jmr-secondary: #15803d;
-  --jmr-accent: #22c55e;
+  --foreground: #111111;
+  --hoky-primary: #111111;
+  --hoky-sand: #d4cfc9;
+  --hoky-sand2: #e2ddd8;
+  --hoky-sand3: #f0ede8;
+  --hoky-gray: #888580;
+  --hoky-accent: #111111;
 }
 
 .dark {
   --background: #0a0a0a;
-  --foreground: #ededed;
-  --jmr-primary: #22c55e;
-  --jmr-secondary: #16a34a;
-  --jmr-accent: #4ade80;
+  --foreground: #f5f5f5;
 }
 
 body {
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Inter', Arial, Helvetica, sans-serif;
   background-color: var(--background);
   color: var(--foreground);
 }
 
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+/* Clase de tipografía de marca — usar en logos y títulos hero */
+.font-brand {
+  font-family: 'AficalNeueBold', 'Arial Black', sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.01em;
 }
 
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
 ::-webkit-scrollbar-track {
   background: #f1f1f1;
 }
-
-.dark ::-webkit-scrollbar-track {
-  background: #1f2937;
-}
-
 ::-webkit-scrollbar-thumb {
-  background: var(--jmr-primary);
-  border-radius: 4px;
+  background: #111;
+  border-radius: 2px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--jmr-secondary);
+  background: #333;
 }
 
+/* Transiciones suaves */
 * {
   transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
@@ -56,63 +69,49 @@ body {
   }
 }
 
-/* WhatsApp Float Button */
-.whatsapp-float {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  z-index: 100;
-  animation: pulse 2s infinite;
+/* Carrito slide-in */
+@keyframes slide-in {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
 }
-
-@keyframes pulse {
-  0%, 100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.05);
-  }
-}
-
-/* Cart Badge Animation */
-.cart-badge {
-  animation: bounce 0.5s;
-}
-
-@keyframes bounce {
-  0%, 100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.2);
-  }
-}
-
-/* Carousel Animation */
-.animate-scroll {
-  animation: scroll 12s linear infinite;
-}
-
-@keyframes scroll {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-50%);
-  }
-}
-
-/* Pause animation on hover */
-.animate-scroll:hover {
-  animation-play-state: paused;
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out;
 }
 
 /* Product Card Hover */
 .product-card {
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
-
 .product-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 25px rgba(22, 163, 74, 0.15);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+}
+
+/* Cart Badge bounce */
+.cart-badge {
+  animation: bounce 0.5s;
+}
+@keyframes bounce {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.25); }
+}
+
+/* Ticker de banner */
+.animate-scroll {
+  animation: scroll 18s linear infinite;
+}
+@keyframes scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.animate-scroll:hover {
+  animation-play-state: paused;
+}
+
+/* WhatsApp float */
+.whatsapp-float {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 100;
 }

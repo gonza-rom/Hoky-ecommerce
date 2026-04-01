@@ -8,9 +8,16 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        'jmr-green': '#16a34a',
-        'jmr-green-dark': '#15803d',
-        'jmr-green-light': '#22c55e',
+        'hoky-black':  '#111111',
+        'hoky-dark':   '#1a1a1a',
+        'hoky-sand':   '#d4cfc9',
+        'hoky-sand2':  '#e2ddd8',
+        'hoky-sand3':  '#f0ede8',
+        'hoky-gray':   '#888580',
+      },
+      fontFamily: {
+        // Afical Neue Extra Bold no está en Google Fonts, usamos la fuente cargada localmente
+        // Para títulos de marca usamos la clase .font-hoky-brand definida en globals.css
       },
     },
   },

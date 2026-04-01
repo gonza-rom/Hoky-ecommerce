@@ -8,10 +8,14 @@ const nextConfig = {
         hostname: 'res.cloudinary.com',
         pathname: '/**',
       },
-      // Agrega otros dominios que uses para imágenes
       {
         protocol: 'https',
         hostname: '*.cloudinary.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
         pathname: '/**',
       },
     ],

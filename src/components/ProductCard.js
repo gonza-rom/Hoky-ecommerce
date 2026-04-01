@@ -10,80 +10,81 @@ export default function ProductCard({ producto, onAddToCart }) {
   const imagenPrincipal = images[0] || null;
 
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col group">
+    <div className="bg-white overflow-hidden hover:shadow-lg transition-all duration-300 flex flex-col group border border-gray-100 hover:border-gray-300 rounded-sm product-card">
       <Link href={`/productos/${producto.id}`} className="block">
-        <div className="relative h-48 bg-gray-100">
+        <div className="relative bg-hoky-sand3 aspect-[3/4]">
           {imagenPrincipal ? (
             <Image
               src={imagenPrincipal}
               alt={producto.nombre}
               fill
-              className="object-cover group-hover:scale-105 transition-transform duration-300"
-              sizes="(max-width: 768px) 50vw, 33vw"
+              className="object-cover group-hover:scale-105 transition-transform duration-500"
+              sizes="(max-width: 768px) 50vw, 25vw"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <ShoppingBag className="w-16 h-16 text-gray-400" />
-            </div>
-          )}
-          
-          {images.length > 1 && (
-            <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded shadow-lg font-semibold flex items-center gap-1">
-              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-              </svg>
-              {images.length}
-            </div>
-          )}
-          
-          {producto.stock <= producto.stockMinimo && producto.stock > 0 && (
-            <div className="absolute top-2 right-2 bg-red-600 text-white text-xs px-2 py-1 rounded shadow-lg font-semibold">
-              ¡Últimas unidades!
-            </div>
-          )}
-          
-          {producto.stock === 0 && (
-            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-              <span className="bg-white text-gray-900 px-4 py-2 rounded-lg font-semibold">Sin Stock</span>
+              <ShoppingBag className="w-12 h-12 text-gray-300" />
             </div>
           )}
 
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-            <span className="bg-white text-gray-900 px-4 py-2 rounded-lg font-semibold flex items-center gap-2 shadow-lg">
-              <Eye className="w-4 h-4" />
-              Ver Detalles
+          {/* Badge múltiples fotos */}
+          {images.length > 1 && (
+            <div className="absolute top-2 left-2 bg-hoky-black/80 text-white text-[10px] px-2 py-0.5 tracking-wider uppercase">
+              {images.length} fotos
+            </div>
+          )}
+
+          {/* Pocas unidades */}
+          {producto.stock <= producto.stockMinimo && producto.stock > 0 && (
+            <div className="absolute top-2 right-2 bg-white text-hoky-black text-[10px] px-2 py-0.5 font-semibold tracking-wider uppercase border border-hoky-black">
+              Últimas
+            </div>
+          )}
+
+          {/* Sin stock */}
+          {producto.stock === 0 && (
+            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+              <span className="bg-white text-hoky-black px-4 py-1.5 text-xs font-semibold tracking-widest uppercase">
+                Sin Stock
+              </span>
+            </div>
+          )}
+
+          {/* Hover overlay */}
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-colors flex items-end justify-center pb-4 opacity-0 group-hover:opacity-100">
+            <span className="bg-white text-hoky-black px-4 py-2 text-xs font-semibold tracking-[0.1em] uppercase flex items-center gap-2">
+              <Eye className="w-3.5 h-3.5" />
+              Ver producto
             </span>
           </div>
         </div>
       </Link>
-      
-      <div className="p-4 flex flex-col flex-1">
+
+      <div className="p-3 flex flex-col flex-1">
+        {producto.categoria && (
+          <span className="text-[10px] text-gray-400 font-medium tracking-[0.1em] uppercase mb-1">
+            {producto.categoria.nombre}
+          </span>
+        )}
+
         <Link href={`/productos/${producto.id}`}>
-          <h3 className="font-semibold text-gray-900 mb-1 line-clamp-2 min-h-[2.5rem] hover:text-jmr-green transition-colors">
+          <h3 className="text-sm font-semibold text-hoky-black mb-2 line-clamp-2 leading-snug hover:opacity-60 transition-opacity tracking-wide uppercase">
             {producto.nombre}
           </h3>
         </Link>
-        
-        {producto.categoria && (
-          <Link href={`/productos?categoria=${producto.categoriaId}`} className="text-xs text-gray-500 hover:text-jmr-green mb-2 inline-block">
-            {producto.categoria.nombre}
-          </Link>
-        )}
-        
-        <div className="mt-auto">
-          <div className="flex items-center justify-between mt-3">
-            <p className="text-xl font-bold text-jmr-green">
-              ${producto.precio.toFixed(2)}
-            </p>
-            <button
-              onClick={(e) => { e.preventDefault(); onAddToCart(producto, 1); }}
-              disabled={producto.stock === 0}
-              className="bg-jmr-green hover:bg-jmr-green-dark text-white p-2 rounded-lg transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
-              title={producto.stock === 0 ? 'Sin stock' : 'Agregar al carrito'}
-            >
-              <ShoppingBag className="w-5 h-5" />
-            </button>
-          </div>
+
+        <div className="mt-auto flex items-center justify-between">
+          <p className="text-base font-bold text-hoky-black">
+            ${producto.precio.toFixed(2)}
+          </p>
+          <button
+            onClick={(e) => { e.preventDefault(); onAddToCart(producto, 1); }}
+            disabled={producto.stock === 0}
+            className="bg-hoky-black hover:bg-hoky-dark text-white p-2 rounded-none transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+            title={producto.stock === 0 ? 'Sin stock' : 'Agregar al carrito'}
+          >
+            <ShoppingBag className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </div>

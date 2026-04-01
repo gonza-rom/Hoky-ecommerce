@@ -2,51 +2,58 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { ShoppingCart, Menu, X, Search, Heart, User } from 'lucide-react';
+import { ShoppingCart, Menu, X } from 'lucide-react';
 import { useState } from 'react';
 import { useCart } from '@/context/CartContext';
 import Cart from './Cart';
 
 export default function Navbar() {
   const [menuAbierto, setMenuAbierto] = useState(false);
-  const [busqueda, setBusqueda] = useState('');
   const { toggleCart, getItemCount } = useCart();
   const itemCount = getItemCount();
 
-  const categorias = [
-    'Mochilas',
-    'Bolsos',
-    'Carteras',
-    'Billeteras',
-    'Cinturones',
-    'Accesorios'
+  const links = [
+    { href: '/productos', label: 'Catálogo' },
+    { href: '/nosotros', label: 'Nosotros' },
+    { href: '/contacto', label: 'Contacto' },
   ];
 
   return (
     <>
-      <nav className="bg-white shadow-md sticky top-0 z-40">
-        {/* Top bar con información */}
-        <div className="bg-jmr-green text-white text-xs py-2">
-          <div className="container mx-auto px-4 flex flex-wrap justify-between items-center gap-2">
-            <div className="flex items-center gap-4">
-              <span>📍 Rivadavia 564 - SFVC / Av Pte Castillo 1165 - Valle Viejo</span>
-            </div>
-            <div className="flex items-center gap-4">
-              <a href="tel:+543834927252" className="hover:underline">📞 +54 383 492-7252</a>
-              <a href="mailto:cuerosjmr@hotmail.com" className="hover:underline hidden sm:inline">✉️ cuerosjmr@hotmail.com</a>
-            </div>
-          </div>
+      {/* Banner ticker */}
+      <div className="bg-hoky-black text-white overflow-hidden py-2">
+        <div className="flex animate-scroll whitespace-nowrap">
+          {[...Array(6)].map((_, i) => (
+            <span key={i} className="text-xs tracking-[0.18em] uppercase px-12">
+              ENVÍOS A TODO EL PAÍS &nbsp;·&nbsp; NUEVA COLECCIÓN &nbsp;·&nbsp; INDUMENTARIA URBANA
+            </span>
+          ))}
         </div>
+      </div>
 
-        {/* Main navbar */}
+      <nav className="bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between h-20">
-            {/* Logo */}
-            <Link href="/" className="flex items-center flex-shrink-0">
-              <div className="relative w-32 h-16 sm:w-40 sm:h-20">
+          <div className="flex items-center justify-between h-16 md:h-20">
+
+            {/* Links desktop — izquierda */}
+            <div className="hidden lg:flex items-center gap-8">
+              {links.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="text-xs font-semibold tracking-[0.12em] uppercase text-gray-600 hover:text-hoky-black transition-colors"
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+
+            {/* Logo — centro */}
+            <Link href="/" className="absolute left-1/2 -translate-x-1/2">
+              <div className="relative h-10 w-28 md:h-12 md:w-32">
                 <Image
-                  src="/logo-jmr.png"
-                  alt="Marroquinería JMR"
+                  src="/logo.jpeg"
+                  alt="Hoky Indumentaria"
                   fill
                   className="object-contain"
                   priority
@@ -54,42 +61,28 @@ export default function Navbar() {
               </div>
             </Link>
 
-            {/* Desktop Navigation */}
-            <div className="hidden lg:flex items-center space-x-6">
-              <Link href="/" className="text-gray-700 hover:text-jmr-green font-medium transition-colors">
-                Inicio
-              </Link>
-              <Link href="/productos" className="text-gray-700 hover:text-jmr-green font-medium transition-colors">
-                Productos
-              </Link>
-              <Link href="/nosotros" className="text-gray-700 hover:text-jmr-green font-medium transition-colors">
-                Nosotros
-              </Link>
-              <Link href="/contacto" className="text-gray-700 hover:text-jmr-green font-medium transition-colors">
-                Contacto
-              </Link>
-            </div>
-
-            {/* Icons */}
-            <div className="flex items-center space-x-3">
+            {/* Íconos — derecha */}
+            <div className="flex items-center gap-3 ml-auto">
               <button
                 onClick={toggleCart}
-                className="relative p-2 text-gray-700 hover:text-jmr-green transition-colors"
+                className="relative p-2 text-hoky-black hover:opacity-60 transition-opacity"
+                aria-label="Abrir carrito"
               >
-                <ShoppingCart className="w-6 h-6" />
+                <ShoppingCart className="w-5 h-5" />
                 {itemCount > 0 && (
-                  <span className="cart-badge absolute -top-1 -right-1 bg-jmr-green text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                  <span className="cart-badge absolute -top-1 -right-1 bg-hoky-black text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
                     {itemCount}
                   </span>
                 )}
               </button>
 
-              {/* Mobile menu button */}
+              {/* Burger móvil */}
               <button
                 onClick={() => setMenuAbierto(!menuAbierto)}
-                className="lg:hidden p-2 text-gray-700 hover:text-jmr-green transition-colors"
+                className="lg:hidden p-2 text-hoky-black hover:opacity-60 transition-opacity"
+                aria-label="Menú"
               >
-                {menuAbierto ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+                {menuAbierto ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </button>
             </div>
           </div>
@@ -97,42 +90,23 @@ export default function Navbar() {
 
         {/* Mobile menu */}
         {menuAbierto && (
-          <div className="lg:hidden border-t">
-            <div className="container mx-auto px-4 py-4 space-y-3">
-              <Link
-                href="/"
-                onClick={() => setMenuAbierto(false)}
-                className="block py-2 text-gray-700 hover:text-jmr-green font-medium transition-colors"
-              >
-                Inicio
-              </Link>
-              <Link
-                href="/productos"
-                onClick={() => setMenuAbierto(false)}
-                className="block py-2 text-gray-700 hover:text-jmr-green font-medium transition-colors"
-              >
-                Productos
-              </Link>
-              <Link
-                href="/nosotros"
-                onClick={() => setMenuAbierto(false)}
-                className="block py-2 text-gray-700 hover:text-jmr-green font-medium transition-colors"
-              >
-                Nosotros
-              </Link>
-              <Link
-                href="/contacto"
-                onClick={() => setMenuAbierto(false)}
-                className="block py-2 text-gray-700 hover:text-jmr-green font-medium transition-colors"
-              >
-                Contacto
-              </Link>
+          <div className="lg:hidden border-t border-gray-100 bg-white">
+            <div className="container mx-auto px-4 py-4 space-y-1">
+              {links.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMenuAbierto(false)}
+                  className="block py-3 text-xs font-semibold tracking-[0.12em] uppercase text-gray-700 hover:text-hoky-black border-b border-gray-100 transition-colors"
+                >
+                  {link.label}
+                </Link>
+              ))}
             </div>
           </div>
         )}
       </nav>
 
-      {/* Carrito lateral */}
       <Cart />
     </>
   );

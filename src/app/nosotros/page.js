@@ -1,198 +1,153 @@
-import Image from 'next/image';
+'use client';
+
 import Link from 'next/link';
 import { ArrowRight, Heart, Star, Award, TrendingUp } from 'lucide-react';
 
 export default function NosotrosPage() {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen" style={{ fontFamily: "'Inter', sans-serif" }}>
+
       {/* Hero */}
-      <section className="bg-gradient-to-r from-jmr-green to-jmr-green-dark text-white py-20">
-        <div className="container mx-auto px-4 text-center">
-          <h1 className="text-4xl md:text-5xl font-bold mb-6">
-            Nuestra Historia
+      <section style={{ background: '#111', color: '#fff', padding: '80px 24px' }}>
+        <div style={{ maxWidth: 720, margin: '0 auto', textAlign: 'center' }}>
+          <p style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', opacity: 0.45, margin: '0 0 16px' }}>
+            Quiénes somos
+          </p>
+          <h1 style={{
+            fontFamily: "'Bebas Neue', sans-serif",
+            fontSize: 'clamp(52px, 8vw, 80px)',
+            lineHeight: 0.9,
+            letterSpacing: '0.02em',
+            margin: '0 0 24px',
+          }}>
+            HOKY<br />INDUMENTARIA
           </h1>
-          <p className="text-xl max-w-3xl mx-auto">
-            Más de 20 años brindando calidad y confianza en Catamarca
+          <p style={{ fontSize: 15, opacity: 0.55, lineHeight: 1.8, maxWidth: 520, margin: '0 auto' }}>
+            Ropa urbana pensada para la calle. Estilo que se vive, calidad que se nota.
           </p>
         </div>
       </section>
 
       {/* Historia */}
-      <section className="py-16">
-        <div className="container mx-auto px-4">
-          <div className="grid md:grid-cols-2 gap-12 items-center mb-16">
-            <div className="relative h-96 bg-gray-100 rounded-2xl overflow-hidden">
-              <Image
-                src="/local-fachada.jpg"
-                alt="Fachada Marroquinería JMR"
-                fill
-                className="object-cover"
-              />
-            </div>
-            <div>
-              <h2 className="text-3xl font-bold mb-6">
-                ¡Hola, soy María Lourdes Quispe!
-              </h2>
-              <div className="space-y-4 text-gray-700">
-                <p>
-                  A lo largo de mi trayectoria comercial, mi enfoque ha evolucionado hacia la 
-                  compra y reventa de mercadería, marcando un cambio significativo en mi negocio. 
-                  Inicialmente, comencé vendiendo cintos y billeteras artesanales en las calles, 
-                  pero con el tiempo, identifiqué oportunidades en el mercado y decidí ampliar 
-                  mis horizontes.
-                </p>
-                <p>
-                  En septiembre de 2003, alquilé mi primer local, proporcionando una plataforma 
-                  para exhibir y vender diversos productos de cuero. Este paso me permitió no 
-                  solo consolidar mi presencia en el mercado local sino también diversificar 
-                  mi oferta.
-                </p>
-                <p>
-                  Actualmente, gestiono con éxito dos sucursales, una en San Fernando del Valle 
-                  de Catamarca y otra en Valle Viejo. A través de una cuidadosa selección de 
-                  mercadería de alta calidad, buscamos satisfacer las necesidades cambiantes 
-                  de nuestros clientes.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Galería del Local */}
-          <div className="mb-16">
-            <h2 className="text-3xl font-bold text-center mb-8">Nuestro Local</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="relative h-64 rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
-                <Image
-                  src="/local-interior-1.jpg"
-                  alt="Interior Marroquinería JMR 1"
-                  fill
-                  className="object-cover hover:scale-105 transition-transform duration-300"
-                />
-              </div>
-              <div className="relative h-64 rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
-                <Image
-                  src="/local-interior-2.jpg"
-                  alt="Interior Marroquinería JMR 2"
-                  fill
-                  className="object-cover hover:scale-105 transition-transform duration-300"
-                />
-              </div>
-              <div className="relative h-64 rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
-                <Image
-                  src="/local-interior-3.jpg"
-                  alt="Interior Marroquinería JMR 3"
-                  fill
-                  className="object-cover hover:scale-105 transition-transform duration-300"
-                />
-              </div>
-            </div>
-          </div>
+      <section style={{ padding: '72px 24px', maxWidth: 800, margin: '0 auto' }}>
+        <p style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#aaa', margin: '0 0 12px' }}>
+          Nuestra historia
+        </p>
+        <h2 style={{
+          fontFamily: "'Bebas Neue', sans-serif",
+          fontSize: 40, letterSpacing: '0.03em', margin: '0 0 28px', color: '#111',
+        }}>
+          NACIDOS EN LA CALLE
+        </h2>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          {[
+            'Hoky nació de una pasión simple: la ropa como forma de expresión. Creemos que lo que vestís dice quién sos antes de que abras la boca.',
+            'Desde Catamarca, armamos una marca que mezcla la cultura urbana con la identidad del interior argentino. Sin pretensiones, con mucho carácter.',
+            'Cada prenda que diseñamos pasa por una sola pregunta: ¿te la pondrías en la calle con orgullo? Si la respuesta es sí, va a la colección.',
+          ].map((p, i) => (
+            <p key={i} style={{ fontSize: 15, lineHeight: 1.85, color: '#444', margin: 0 }}>{p}</p>
+          ))}
         </div>
       </section>
 
       {/* Valores */}
-      <section className="py-16 bg-gray-50">
-        <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-12">Nuestros Valores</h2>
-          <div className="grid md:grid-cols-4 gap-8">
-            <div className="text-center">
-              <div className="bg-jmr-green text-white w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Heart className="w-8 h-8" />
+      <section style={{ background: '#f7f4f0', padding: '72px 24px' }}>
+        <div style={{ maxWidth: 900, margin: '0 auto' }}>
+          <p style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#aaa', margin: '0 0 12px', textAlign: 'center' }}>
+            Lo que nos mueve
+          </p>
+          <h2 style={{
+            fontFamily: "'Bebas Neue', sans-serif",
+            fontSize: 40, letterSpacing: '0.03em', margin: '0 0 48px', color: '#111', textAlign: 'center',
+          }}>
+            NUESTROS VALORES
+          </h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 32 }}>
+            {[
+              { icon: Heart,     label: 'Pasión',       desc: 'Cada prenda la diseñamos con amor por lo que hacemos.' },
+              { icon: Star,      label: 'Calidad',      desc: 'Materiales que duran, costuras que aguantan la calle.' },
+              { icon: TrendingUp, label: 'Estilo',      desc: 'Tendencia sin perder identidad propia.' },
+              { icon: Award,     label: 'Autenticidad', desc: 'Sin filtros, sin poses. Hoky es lo que ves.' },
+            ].map(({ icon: Icon, label, desc }) => (
+              <div key={label} style={{ textAlign: 'center' }}>
+                <div style={{
+                  width: 52, height: 52, background: '#111', borderRadius: '50%',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  margin: '0 auto 14px',
+                }}>
+                  <Icon size={22} color="#fff" />
+                </div>
+                <p style={{ fontWeight: 700, fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 0 8px', color: '#111' }}>
+                  {label}
+                </p>
+                <p style={{ fontSize: 13, color: '#888', lineHeight: 1.7, margin: 0 }}>{desc}</p>
               </div>
-              <h3 className="font-bold text-lg mb-2">Pasión</h3>
-              <p className="text-gray-600 text-sm">
-                Amor por lo que hacemos y dedicación en cada producto
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="bg-jmr-green text-white w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Star className="w-8 h-8" />
-              </div>
-              <h3 className="font-bold text-lg mb-2">Calidad</h3>
-              <p className="text-gray-600 text-sm">
-                Selección cuidadosa de las mejores marcas y productos
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="bg-jmr-green text-white w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <TrendingUp className="w-8 h-8" />
-              </div>
-              <h3 className="font-bold text-lg mb-2">Servicio</h3>
-              <p className="text-gray-600 text-sm">
-                Atención personalizada para cada cliente
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="bg-jmr-green text-white w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Award className="w-8 h-8" />
-              </div>
-              <h3 className="font-bold text-lg mb-2">Experiencia</h3>
-              <p className="text-gray-600 text-sm">
-                Más de 20 años en el mercado catamarqueño
-              </p>
-            </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Sucursales */}
-      <section className="py-16">
-        <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-12">Nuestras Sucursales</h2>
-          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-jmr-green">
-              <h3 className="text-xl font-bold mb-4 text-jmr-green">Sucursal Central - San Fernando</h3>
-              <p className="text-gray-700 mb-2">📍 Rivadavia 564</p>
-              <p className="text-gray-700 mb-2">📞 +54 383 492-7252</p>
-              <p className="text-gray-600 text-sm mb-3">
-                En el corazón de la ciudad
-              </p>
-              <a
-                href="https://maps.app.goo.gl/qAhZgq3nbN8k6MRx7"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-jmr-green font-semibold hover:underline"
-              >
-                Ver en mapa →
-              </a>
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-jmr-green">
-              <h3 className="text-xl font-bold mb-4 text-jmr-green">Valle Viejo</h3>
-              <p className="text-gray-700 mb-2">📍 Av Pte Castillo 1165</p>
-              <p className="text-gray-700 mb-2">📞 +54 383 492-7252</p>
-              <p className="text-gray-600 text-sm mb-3">
-                Ubicación estratégica con estacionamiento
-              </p>
-              <a
-                href="https://maps.app.goo.gl/QoTBKrUCSEzssJ8C7"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-jmr-green font-semibold hover:underline"
-              >
-                Ver en mapa →
-              </a>
-            </div>
-          </div>
+      {/* Local */}
+      <section style={{ padding: '72px 24px', maxWidth: 800, margin: '0 auto' }}>
+        <p style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#aaa', margin: '0 0 12px' }}>
+          Dónde encontrarnos
+        </p>
+        <h2 style={{
+          fontFamily: "'Bebas Neue', sans-serif",
+          fontSize: 40, letterSpacing: '0.03em', margin: '0 0 32px', color: '#111',
+        }}>
+          NUESTRO LOCAL
+        </h2>
+        <div style={{
+          border: '0.5px solid #e0dbd5', padding: '32px',
+          display: 'flex', flexDirection: 'column', gap: 10,
+        }}>
+          <p style={{ fontSize: 15, fontWeight: 700, color: '#111', margin: 0 }}>
+            📍 Esquiú 620, Catamarca
+          </p>
+          <p style={{ fontSize: 14, color: '#666', margin: 0 }}>
+            (antes de llegar a Rivadavia)
+          </p>
+          <p style={{ fontSize: 14, color: '#888', margin: '8px 0 0', lineHeight: 1.8 }}>
+            Lunes a Sábados<br />
+            9:00 a 13:30 hs — 18:00 a 22:00 hs
+          </p>
+          <a
+            href="https://maps.app.goo.gl/etsJBVaNJ4CVgaHMA"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'inline-block', marginTop: 16,
+              background: '#111', color: '#fff',
+              fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase',
+              padding: '11px 24px', textDecoration: 'none', width: 'fit-content', fontWeight: 700,
+            }}
+          >
+            Cómo llegar →
+          </a>
         </div>
       </section>
 
       {/* CTA */}
-      <section className="py-16 bg-jmr-green text-white">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl font-bold mb-6">
-            ¿Listo para encontrar tu producto ideal?
-          </h2>
-          <p className="text-xl mb-8 max-w-2xl mx-auto">
-            Explora nuestro catálogo completo de productos de marroquinería
-          </p>
-          <Link
-            href="/productos"
-            className="inline-flex items-center gap-2 bg-white text-jmr-green px-8 py-4 rounded-lg font-semibold hover:bg-gray-100 transition-colors text-lg"
-          >
-            Ver Productos
-            <ArrowRight className="w-5 h-5" />
-          </Link>
-        </div>
+      <section style={{ background: '#111', color: '#fff', padding: '64px 24px', textAlign: 'center' }}>
+        <p style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', opacity: 0.4, margin: '0 0 12px' }}>
+          Entrá al catálogo
+        </p>
+        <h2 style={{
+          fontFamily: "'Bebas Neue', sans-serif",
+          fontSize: 'clamp(40px, 6vw, 64px)', letterSpacing: '0.02em', margin: '0 0 28px',
+        }}>
+          ¿LISTO PARA VESTIRTE?
+        </h2>
+        <Link href="/productos" style={{
+          display: 'inline-flex', alignItems: 'center', gap: 8,
+          background: '#fff', color: '#111',
+          fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase',
+          padding: '13px 28px', textDecoration: 'none', fontWeight: 700,
+        }}>
+          Ver colección
+          <ArrowRight size={15} />
+        </Link>
       </section>
     </div>
   );

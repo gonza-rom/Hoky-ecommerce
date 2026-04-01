@@ -2,350 +2,340 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
-import { ShoppingBag, ArrowRight, Star, TrendingUp, CreditCard, Wallet, QrCode } from 'lucide-react';
+import { ShoppingBag } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import ProductCard from '@/components/ProductCard';
 
+const BANNERS = [
+  {
+    id: 1,
+    eyebrow: 'Nueva colección',
+    title: 'OTOÑO\n2026',
+    sub: 'Prendas pensadas para la calle.\nCalidad que se nota.',
+    cta: 'Ver colección',
+    href: '/productos',
+    bg: '#111',
+    imgBg: '#d4cfc9',
+  },
+  {
+    id: 2,
+    eyebrow: 'Streetwear',
+    title: 'URBAN\nWEAR',
+    sub: 'Hoodies, baggys y remeras.\nEstilo que se vive.',
+    cta: 'Ver catálogo',
+    href: '/productos',
+    bg: '#1a1a1a',
+    imgBg: '#c8c3bc',
+  },
+  {
+    id: 3,
+    eyebrow: 'Exclusivo online',
+    title: 'ENVÍOS\nGRATIS',
+    sub: 'En compras superiores\na $50.000.',
+    cta: 'Aprovechar',
+    href: '/productos',
+    bg: '#0f0f0f',
+    imgBg: '#bbb5ae',
+  },
+];
+
 export default function Home() {
-  const [productosDestacados, setProductosDestacados] = useState([]);
+  const [banner, setBanner] = useState(0);
+  const [catActiva, setCatActiva] = useState('');
+  const [productos, setProductos] = useState([]);
+  const [categorias, setCategorias] = useState([]);
   const [loading, setLoading] = useState(true);
   const { addToCart } = useCart();
 
   useEffect(() => {
-    fetchProductosDestacados();
+    const t = setInterval(() => setBanner((b) => (b + 1) % BANNERS.length), 5000);
+    return () => clearInterval(t);
   }, []);
 
-  const fetchProductosDestacados = async () => {
-    try {
-      const response = await fetch('/api/productos?destacados=true&limit=8');
-      const data = await response.json();
-      setProductosDestacados(data);
-    } catch (error) {
-      console.error('Error al cargar productos:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    fetch('/api/categorias')
+      .then((r) => r.json())
+      .then((data) => setCategorias(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, []);
 
-  const mediosDePago = [
-    { nombre: 'BNA+', logo: 'bna-plus.png' },
-    { nombre: 'Mercado Pago', logo: 'mercado-pago.png' },
-    { nombre: 'Modo', logo: 'modo.png' },
-    { nombre: 'VISA', logo: 'visa.png' },
-    { nombre: 'Mastercard', logo: 'mastercard.png' },
-    { nombre: 'American Express', logo: 'american-express.png' },
-    { nombre: 'Cabal', logo: 'cabal.png' },
-    { nombre: 'Naranja X', logo: 'naranja-x.png' },
-    { nombre: 'Centrocard', logo: 'centrocard.png' },
-    { nombre: 'Sol', logo: 'sol.png' },
+  useEffect(() => {
+    setLoading(true);
+    const params = new URLSearchParams();
+    params.set('limit', '8');
+    if (catActiva) params.set('categoria', catActiva);
+    else params.set('destacados', 'true');
+
+    fetch(`/api/productos?${params}`)
+      .then((r) => r.json())
+      .then((data) => setProductos(Array.isArray(data) ? data : []))
+      .catch(() => setProductos([]))
+      .finally(() => setLoading(false));
+  }, [catActiva]);
+
+  const b = BANNERS[banner];
+
+  const catsMenu = [
+    { label: 'Todo', value: '' },
+    ...categorias.slice(0, 5).map((c) => ({ label: c.nombre, value: c.id })),
   ];
 
   return (
-    <div>
-      {/* Hero Section con Galería */}
-      <section className="relative bg-gradient-to-r from-jmr-green to-jmr-green-dark text-white py-12 md:py-20">
-        <div className="container mx-auto px-4">
-          <div className="grid md:grid-cols-2 gap-8 items-center">
-            <div>
-              <h1 className="text-4xl md:text-6xl font-bold mb-6">
-                Marroquinería de Calidad
-              </h1>
-              <p className="text-xl mb-8 text-gray-100">
-                Mochilas, bolsos, carteras y más. Las mejores marcas al mejor precio.
-                Más de 20 años de experiencia en Catamarca.
-              </p>
-              <div className="flex flex-wrap gap-4 mb-6">
-                <Link
-                  href="/productos"
-                  className="bg-white text-jmr-green px-8 py-4 rounded-lg font-semibold hover:bg-gray-100 transition-colors flex items-center gap-2"
-                >
-                  Ver Productos
-                  <ArrowRight className="w-5 h-5" />
-                </Link>
-                <a
-                  href="https://wa.me/543834927252"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="bg-transparent border-2 border-white px-8 py-4 rounded-lg font-semibold hover:bg-white hover:text-jmr-green transition-colors"
-                >
-                  Contactar
-                </a>
-              </div>
-              <div className="flex items-center gap-3 text-sm">
-                <Wallet className="w-5 h-5" />
-                <span>Aceptamos todos los medios de pago</span>
-              </div>
-            </div>
+    <div style={{ fontFamily: "'Inter', sans-serif" }}>
 
-            {/* Galería de fotos del local */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="relative h-48 md:h-64 rounded-lg overflow-hidden shadow-xl">
-                <Image
-                  src="/local-fachada.jpg"
-                  alt="Fachada Marroquinería JMR"
-                  fill
-                  className="object-cover"
-                  priority
-                />
-              </div>
-              <div className="relative h-48 md:h-64 rounded-lg overflow-hidden shadow-xl">
-                <Image
-                  src="/local-interior-1.jpg"
-                  alt="Interior Marroquinería JMR"
-                  fill
-                  className="object-cover"
-                  priority
-                />
-              </div>
-              <div className="relative h-48 md:h-64 rounded-lg overflow-hidden shadow-xl col-span-2">
-                <Image
-                  src="/local-interior-2.jpg"
-                  alt="Productos Marroquinería JMR"
-                  fill
-                  className="object-cover"
-                  priority
-                />
-              </div>
-            </div>
-          </div>
+      <style>{`
+        /* ── Ticker ── */
+        @keyframes hoky-scroll {
+          0%   { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+
+        /* ── Skeleton ── */
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50%       { opacity: 0.45; }
+        }
+
+        /* ── Hero ── */
+        .hk-hero {
+          display: grid;
+          grid-template-columns: 1fr;
+          min-height: 300px;
+        }
+        .hk-hero-img { display: none; }
+        .hk-hero-text { padding: 36px 20px; }
+        .hk-hero-h1 {
+          font-family: 'Bebas Neue', sans-serif;
+          font-size: 58px;
+          line-height: 0.88;
+          letter-spacing: 0.02em;
+          margin: 0 0 14px;
+          white-space: pre-line;
+        }
+
+        @media (min-width: 768px) {
+          .hk-hero { grid-template-columns: 1fr 1fr; min-height: 380px; }
+          .hk-hero-img { display: flex; }
+          .hk-hero-text { padding: 44px 36px; }
+          .hk-hero-h1 { font-size: 72px; }
+        }
+
+        /* ── Sección header ── */
+        .hk-sec-header {
+          padding: 28px 16px 0;
+          display: flex;
+          align-items: baseline;
+          justify-content: space-between;
+        }
+        @media (min-width: 768px) {
+          .hk-sec-header { padding: 32px 28px 0; }
+        }
+
+        /* ── Filtro categorías ── */
+        .hk-cats {
+          display: flex;
+          gap: 8px;
+          padding: 14px 16px 0;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+        }
+        .hk-cats::-webkit-scrollbar { display: none; }
+        @media (min-width: 768px) {
+          .hk-cats { padding: 18px 28px 0; }
+        }
+
+        /* ── Grid de productos ── */
+        .hk-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 10px;
+          padding: 16px;
+        }
+        @media (min-width: 480px) {
+          .hk-grid {
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            padding: 16px 20px;
+          }
+        }
+        @media (min-width: 768px) {
+          .hk-grid {
+            grid-template-columns: repeat(4, 1fr);
+            padding: 20px 28px;
+          }
+        }
+        @media (min-width: 1280px) {
+          .hk-grid {
+            grid-template-columns: repeat(8, 1fr);
+          }
+        }
+
+        /* ── Strip CTA ── */
+        .hk-strip {
+          background: #111;
+          color: #fff;
+          padding: 28px 16px;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          margin-top: 8px;
+        }
+        .hk-strip-title {
+          font-family: 'Bebas Neue', sans-serif;
+          font-size: 30px;
+          letter-spacing: 0.04em;
+          margin: 0;
+        }
+        @media (min-width: 768px) {
+          .hk-strip {
+            padding: 36px 28px;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0;
+          }
+          .hk-strip-title { font-size: 42px; }
+        }
+      `}</style>
+
+      {/* ── Ticker ─────────────────────────────────────────────────────────── */}
+      <div style={{ background: '#111', color: '#fff', overflow: 'hidden', padding: '9px 0' }}>
+        <div style={{ display: 'flex', animation: 'hoky-scroll 22s linear infinite', whiteSpace: 'nowrap' }}>
+          {[...Array(6)].map((_, i) => (
+            <span key={i} style={{ fontSize: 11, letterSpacing: '0.18em', textTransform: 'uppercase', padding: '0 48px' }}>
+              ENVÍOS A TODO EL PAÍS &nbsp;·&nbsp; 3 CUOTAS SIN INTERÉS &nbsp;·&nbsp; NUEVA COLECCIÓN OTOÑO 2026
+            </span>
+          ))}
         </div>
-      </section>
+      </div>
 
-      {/* Métodos de Pago */}
-      <section className="py-16 bg-white border-b">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Medios de Pago
-            </h2>
-            <p className="text-gray-600 text-lg max-w-2xl mx-auto">
-              En nuestras sucursales aceptamos todas las formas de pago para tu comodidad
-            </p>
-          </div>
+      {/* ── Hero carrusel ──────────────────────────────────────────────────── */}
+      <div className="hk-hero" style={{ background: b.bg, transition: 'background 0.5s ease' }}>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow">
-              <div className="flex flex-col items-center text-center">
-                <div className="bg-blue-600 text-white w-16 h-16 rounded-full flex items-center justify-center mb-4">
-                  <CreditCard className="w-8 h-8" />
-                </div>
-                <h3 className="font-bold text-lg mb-2 text-gray-800">Tarjetas de Débito</h3>
-                <p className="text-sm text-gray-600">Todas las tarjetas</p>
-              </div>
-            </div>
-
-            <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow">
-              <div className="flex flex-col items-center text-center">
-                <div className="bg-purple-600 text-white w-16 h-16 rounded-full flex items-center justify-center mb-4">
-                  <CreditCard className="w-8 h-8" />
-                </div>
-                <h3 className="font-bold text-lg mb-2 text-gray-800">Tarjetas de Crédito</h3>
-                <p className="text-sm text-gray-600">En cuotas disponibles</p>
-              </div>
-            </div>
-
-            <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow">
-              <div className="flex flex-col items-center text-center">
-                <div className="bg-green-600 text-white w-16 h-16 rounded-full flex items-center justify-center mb-4">
-                  <QrCode className="w-8 h-8" />
-                </div>
-                <h3 className="font-bold text-lg mb-2 text-gray-800">Transferencias y QR</h3>
-                <p className="text-sm text-gray-600">Mercado Pago, Modo, BNA+</p>
-              </div>
-            </div>
-
-            <div className="bg-gradient-to-br from-amber-50 to-amber-100 p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow">
-              <div className="flex flex-col items-center text-center">
-                <div className="bg-amber-600 text-white w-16 h-16 rounded-full flex items-center justify-center mb-4">
-                  <Wallet className="w-8 h-8" />
-                </div>
-                <h3 className="font-bold text-lg mb-2 text-gray-800">Efectivo</h3>
-                <p className="text-sm text-gray-600">Pesos argentinos</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-gray-50 rounded-2xl p-8">
-            <h3 className="text-center font-semibold text-gray-700 mb-6">
-              Tarjetas y billeteras aceptadas:
-            </h3>
-            <div className="grid grid-cols-3 md:grid-cols-6 lg:grid-cols-11 gap-4">
-              {mediosDePago.map((medio) => (
-                <div
-                  key={medio.nombre}
-                  className="bg-white rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow flex items-center justify-center h-20"
-                  title={medio.nombre}
-                >
-                  <Image
-                    src={`/pagos/${medio.logo}`}
-                    alt={medio.nombre}
-                    width={80}
-                    height={50}
-                    className="object-contain max-h-12"
-                    onError={(e) => {
-                      e.target.style.display = 'none';
-                      e.target.parentElement.innerHTML = `<span class="text-xs font-semibold text-gray-600 text-center">${medio.nombre}</span>`;
-                    }}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Características */}
-      <section className="py-16 bg-gray-50">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="text-center">
-              <div className="bg-jmr-green text-white w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Star className="w-8 h-8" />
-              </div>
-              <h3 className="text-xl font-bold mb-2">Calidad Garantizada</h3>
-              <p className="text-gray-600">
-                Productos de las mejores marcas con garantía de calidad
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="bg-jmr-green text-white w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <ShoppingBag className="w-8 h-8" />
-              </div>
-              <h3 className="text-xl font-bold mb-2">Amplio Catálogo</h3>
-              <p className="text-gray-600">
-                Gran variedad de productos para todas las necesidades
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="bg-jmr-green text-white w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <TrendingUp className="w-8 h-8" />
-              </div>
-              <h3 className="text-xl font-bold mb-2">+20 Años</h3>
-              <p className="text-gray-600">
-                Más de dos décadas de experiencia en el rubro
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Productos Destacados */}
-      <section className="py-16">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Productos Destacados</h2>
-            <p className="text-gray-600 text-lg">
-              Descubre nuestra selección de productos más vendidos
-            </p>
-          </div>
-
-          {loading ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              {[...Array(8)].map((_, i) => (
-                <div key={i} className="bg-gray-200 h-80 rounded-lg animate-pulse"></div>
-              ))}
-            </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
-                {productosDestacados.map((producto) => (
-                  // ✅ Usa el componente compartido que soporta imagenes[]
-                  <ProductCard
-                    key={producto.id}
-                    producto={producto}
-                    onAddToCart={addToCart}
-                  />
-                ))}
-              </div>
-
-              <div className="text-center">
-                <Link
-                  href="/productos"
-                  className="inline-flex items-center gap-2 bg-jmr-green hover:bg-jmr-green-dark text-white px-8 py-4 rounded-lg font-semibold transition-colors"
-                >
-                  Ver Todos los Productos
-                  <ArrowRight className="w-5 h-5" />
-                </Link>
-              </div>
-            </>
-          )}
-        </div>
-      </section>
-
-      {/* Marcas - Carousel */}
-      <section className="py-16 bg-gray-50">
-        <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-12">Nuestras Marcas</h2>
-          
-          <div className="relative overflow-hidden">
-            <div className="flex animate-scroll space-x-8">
-              {/* Primera vuelta */}
-              <MarcaLogo nombre="Alpine Skate" />
-              <MarcaLogo nombre="Agarrate Catalina" />
-              <MarcaLogo nombre="Carey" />
-              <MarcaLogo nombre="Discovery" />
-              <MarcaLogo nombre="Elf" />
-              <MarcaLogo nombre="Everlast" />
-              <MarcaLogo nombre="Influencer" />
-              <MarcaLogo nombre="LSYD" />
-              <MarcaLogo nombre="Head" />
-              <MarcaLogo nombre="Owen" />
-              <MarcaLogo nombre="Pierre Cardin" />
-              <MarcaLogo nombre="Reef" />
-              <MarcaLogo nombre="Unicross" />
-              <MarcaLogo nombre="Uniform" />
-              <MarcaLogo nombre="Queens" />
-              <MarcaLogo nombre="Wilson" />
-              <MarcaLogo nombre="Bossi" />
-              <MarcaLogo nombre="Amayra" />
-              <MarcaLogo nombre="Biwo" />
-              {/* Segunda vuelta (duplicado para efecto infinito) */}
-              <MarcaLogo nombre="Alpine Skate" />
-              <MarcaLogo nombre="Agarrate Catalina" />
-              <MarcaLogo nombre="Carey" />
-              <MarcaLogo nombre="Discovery" />
-              <MarcaLogo nombre="Elf" />
-              <MarcaLogo nombre="Everlast" />
-              <MarcaLogo nombre="Influencer" />
-              <MarcaLogo nombre="LSYD" />
-              <MarcaLogo nombre="Head" />
-              <MarcaLogo nombre="Owen" />
-              <MarcaLogo nombre="Pierre Cardin" />
-              <MarcaLogo nombre="Reef" />
-              <MarcaLogo nombre="Unicross" />
-              <MarcaLogo nombre="Uniform" />
-              <MarcaLogo nombre="Queens" />
-              <MarcaLogo nombre="Wilson" />
-              <MarcaLogo nombre="Bossi" />
-              <MarcaLogo nombre="Amayra" />
-              <MarcaLogo nombre="Biwo" />
-            </div>
-          </div>
-          
-          <p className="text-center text-gray-500 mt-8 text-sm">
-            Y muchas marcas más en nuestras sucursales
+        {/* Texto */}
+        <div
+          className="hk-hero-text"
+          style={{ color: '#fff', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}
+        >
+          <p style={{ fontSize: 11, letterSpacing: '0.18em', textTransform: 'uppercase', opacity: 0.5, margin: '0 0 10px' }}>
+            {b.eyebrow}
           </p>
-        </div>
-      </section>
-    </div>
-  );
-}
+          <h1 className="hk-hero-h1">{b.title}</h1>
+          <p style={{ fontSize: 13, opacity: 0.5, margin: '0 0 24px', lineHeight: 1.65, whiteSpace: 'pre-line' }}>
+            {b.sub}
+          </p>
+          <Link href={b.href} style={{
+            display: 'inline-block', background: '#fff', color: '#111',
+            fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase',
+            padding: '11px 24px', fontWeight: 700, width: 'fit-content', textDecoration: 'none',
+          }}>
+            {b.cta}
+          </Link>
 
-function MarcaLogo({ nombre }) {
-  return (
-    <div className="flex-shrink-0 bg-white px-8 py-6 rounded-lg shadow-md hover:shadow-lg transition-shadow border border-gray-200 min-w-[200px] h-32 flex items-center justify-center">
-      <Image
-        src={`/marcas/${nombre.toLowerCase().replace(/\s+/g, '-')}.png`}
-        alt={`Logo ${nombre}`}
-        width={150}
-        height={80}
-        className="object-contain max-h-20"
-        onError={(e) => {
-          e.target.style.display = 'none';
-          e.target.parentElement.innerHTML = `<span class="font-bold text-gray-700 text-lg">${nombre}</span>`;
-        }}
-      />
+          {/* Dots */}
+          <div style={{ display: 'flex', gap: 6, marginTop: 24 }}>
+            {BANNERS.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setBanner(i)}
+                style={{
+                  width: i === banner ? 20 : 6, height: 6,
+                  background: i === banner ? '#fff' : 'rgba(255,255,255,0.3)',
+                  border: 'none', cursor: 'pointer', padding: 0,
+                  transition: 'all 0.3s ease',
+                }}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Imagen — solo desktop */}
+        <div
+          className="hk-hero-img"
+          style={{
+            background: b.imgBg, alignItems: 'center',
+            justifyContent: 'center', position: 'relative', overflow: 'hidden',
+            transition: 'background 0.5s ease',
+          }}
+        >
+          <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 90, opacity: 0.12, color: '#555', userSelect: 'none' }}>
+            HOKY
+          </span>
+          <div style={{ position: 'absolute', bottom: 18, right: 18, background: 'rgba(255,255,255,0.92)', padding: '9px 16px' }}>
+            <div style={{ fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#111', fontWeight: 700 }}>Nueva temporada</div>
+            <div style={{ fontSize: 13, color: '#666', marginTop: 2 }}>Otoño · Invierno</div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Destacados ─────────────────────────────────────────────────────── */}
+      <div className="hk-sec-header">
+        <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 34, letterSpacing: '0.04em', margin: 0 }}>
+          DESTACADOS
+        </h2>
+        <Link href="/productos" style={{ fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#888', textDecoration: 'none' }}>
+          Ver todos →
+        </Link>
+      </div>
+
+      {/* ── Filtro categorías ───────────────────────────────────────────────── */}
+      <div className="hk-cats">
+        {catsMenu.map((cat) => (
+          <button
+            key={cat.value}
+            onClick={() => setCatActiva(cat.value)}
+            style={{
+              background: catActiva === cat.value ? '#111' : 'transparent',
+              color: catActiva === cat.value ? '#fff' : '#888',
+              border: `0.5px solid ${catActiva === cat.value ? '#111' : '#ddd'}`,
+              padding: '7px 16px', fontSize: 11, letterSpacing: '0.12em',
+              textTransform: 'uppercase', whiteSpace: 'nowrap',
+              cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0,
+            }}
+          >
+            {cat.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Grid ───────────────────────────────────────────────────────────── */}
+      <div className="hk-grid">
+        {loading
+          ? [...Array(8)].map((_, i) => (
+              <div key={i} style={{ background: '#f0ede8', aspectRatio: '3/4', animation: 'pulse 1.5s infinite' }} />
+            ))
+          : productos.map((p) => (
+              <ProductCard key={p.id} producto={p} onAddToCart={addToCart} />
+            ))
+        }
+        {!loading && productos.length === 0 && (
+          <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '48px 0', color: '#aaa' }}>
+            <ShoppingBag size={40} style={{ opacity: 0.3, marginBottom: 12 }} />
+            <p style={{ fontSize: 14, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+              No hay productos disponibles
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* ── Strip CTA ──────────────────────────────────────────────────────── */}
+      <div className="hk-strip">
+        <div>
+          <p style={{ fontSize: 11, letterSpacing: '0.18em', textTransform: 'uppercase', opacity: 0.4, margin: '0 0 6px' }}>
+            Colección completa
+          </p>
+          <p className="hk-strip-title">TODO EL CATÁLOGO</p>
+        </div>
+        <Link href="/productos" style={{
+          background: '#fff', color: '#111', fontSize: 11,
+          letterSpacing: '0.14em', textTransform: 'uppercase',
+          padding: '11px 24px', fontWeight: 700, textDecoration: 'none', width: 'fit-content',
+        }}>
+          Explorar ahora
+        </Link>
+      </div>
+
     </div>
   );
 }

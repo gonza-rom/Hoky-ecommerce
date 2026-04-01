@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { useCart } from '@/context/CartContext';
 import { showToast } from 'nextjs-toast-notify';
 
-const WHATSAPP_NUMBER = '543834927252';
+const WHATSAPP_NUMBER = '543834644467';
 
 export default function Cart() {
   const {
