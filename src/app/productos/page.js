@@ -407,7 +407,7 @@ function ProductosContent() {
             <div className="mb-4 flex items-center gap-2 flex-wrap">
               {busqueda && (
                 <span className="inline-flex items-center gap-2 bg-jmr-green/10 text-jmr-green px-3 py-1 rounded-full text-sm">
-                  Búsqueda: "{busqueda}"
+                  Búsqueda: &quot;{busqueda}&quot;
                   <button onClick={() => setBusquedaInput('')} className="hover:bg-jmr-green/20 rounded-full p-0.5">
                     <X className="w-3 h-3" />
                   </button>
