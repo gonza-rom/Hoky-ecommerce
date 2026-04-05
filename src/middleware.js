@@ -21,6 +21,7 @@ export async function middleware(request) {
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/productos") ||
     pathname.startsWith("/api/categorias") ||
+    pathname.startsWith('/api/checkout') ||
     pathname.includes(".")                   // archivos estáticos
   ) {
     return NextResponse.next();
