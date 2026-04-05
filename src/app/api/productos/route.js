@@ -1,7 +1,11 @@
+// ══════════════════════════════════════════════════════════════
 // src/app/api/productos/route.js
-import { prisma, TENANT_ID } from "@/lib/prisma";
+// API pública — tienda online Hoky (sin tenantId)
+// ══════════════════════════════════════════════════════════════
+import { NextResponse } from "next/server";
+import { prisma }       from "@/lib/prisma";
 
-export const revalidate = 0;
+export const dynamic = "force-dynamic";
 
 function normalizarImagenes(producto) {
   let imagenes = [];
@@ -19,13 +23,13 @@ function normalizarImagenes(producto) {
       imagenes = [producto.imagenes];
     }
   }
-  const imagenesValidas = imagenes.filter(
+  const validas = imagenes.filter(
     (url) => url && typeof url === "string" && url.startsWith("http")
   );
-  if (imagenesValidas.length === 0 && producto.imagen?.startsWith("http")) {
-    imagenesValidas.push(producto.imagen);
+  if (validas.length === 0 && producto.imagen?.startsWith("http")) {
+    validas.push(producto.imagen);
   }
-  return { ...producto, imagenes: imagenesValidas };
+  return { ...producto, imagenes: validas };
 }
 
 export async function GET(request) {
@@ -36,50 +40,43 @@ export async function GET(request) {
     const pageSize = Math.min(50, Math.max(1, parseInt(searchParams.get("pageSize") || "12")));
     const skip     = (page - 1) * pageSize;
 
-    const busqueda  = searchParams.get("busqueda")?.trim()  || "";
-    const categoria = searchParams.get("categoria")?.trim() || "";
-    const ordenar   = searchParams.get("ordenar")           || "";
-
-    const precioMinParam = searchParams.get("precioMin");
-    const precioMaxParam = searchParams.get("precioMax");
-    const precioMin = precioMinParam !== null ? parseFloat(precioMinParam) : null;
-    const precioMax = precioMaxParam !== null ? parseFloat(precioMaxParam) : null;
-
-    const excludeId = searchParams.get("exclude") ? searchParams.get("exclude") : null;
+    const busqueda   = searchParams.get("busqueda")?.trim() || "";
+    const categoria  = searchParams.get("categoria")?.trim() || "";
+    const ordenar    = searchParams.get("ordenar") || "";
+    const excludeId  = searchParams.get("exclude") || null;
     const limitParam = searchParams.get("limit");
-    const limit = limitParam ? parseInt(limitParam) : null;
+    const limit      = limitParam ? parseInt(limitParam) : null;
+    const destacados = searchParams.get("destacados") === "true";
 
-    // ── Rango de precios ──────────────────────────────────────────────────
+    const precioMin  = searchParams.get("precioMin") !== null ? parseFloat(searchParams.get("precioMin")) : null;
+    const precioMax  = searchParams.get("precioMax") !== null ? parseFloat(searchParams.get("precioMax")) : null;
+
+    // ── Rango de precios ──────────────────────────────────────
     if (searchParams.get("rangoPrecios") === "true") {
-      const [minResult, maxResult] = await Promise.all([
+      const [minR, maxR] = await Promise.all([
         prisma.producto.findFirst({
-          where: { tenantId: TENANT_ID, activo: true, stock: { gt: 0 } },
+          where: { activo: true, stock: { gt: 0 } },
           orderBy: { precio: "asc" },
           select: { precio: true },
         }),
         prisma.producto.findFirst({
-          where: { tenantId: TENANT_ID, activo: true, stock: { gt: 0 } },
+          where: { activo: true, stock: { gt: 0 } },
           orderBy: { precio: "desc" },
           select: { precio: true },
         }),
       ]);
       return Response.json({
-        min: Math.floor(minResult?.precio ?? 0),
-        max: Math.ceil(maxResult?.precio ?? 100000),
+        min: Math.floor(minR?.precio ?? 0),
+        max: Math.ceil(maxR?.precio  ?? 100000),
       });
-    } 
+    }
 
-    const destacados = searchParams.get("destacados") === "true";
+    // ── WHERE ─────────────────────────────────────────────────
+    const where = { activo: true, stock: { gt: 0 } };
 
-    // ── WHERE — siempre filtra por tenantId ───────────────────────────────
-    const where = {
-      tenantId: TENANT_ID,   // ← LA diferencia con JMR
-      activo: true,
-      stock: { gt: 0 },
-    };
-
-    if (categoria)  where.categoriaId = categoria;   // DevHub usa String (cuid), no Int
-    if (excludeId)  where.id = { not: excludeId };
+    if (categoria)  where.categoriaId = categoria;
+    if (excludeId)  where.id          = { not: excludeId };
+    if (destacados) where.destacado   = true;
 
     if (busqueda) {
       where.OR = [
@@ -95,25 +92,26 @@ export async function GET(request) {
       if (precioMax !== null) where.precio.lte = precioMax;
     }
 
-    // ── ORDER BY ──────────────────────────────────────────────────────────
+    // ── ORDER BY ──────────────────────────────────────────────
     let orderBy = [{ imagen: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }];
     if (ordenar === "precio-asc")  orderBy = [{ precio: "asc"  }];
     if (ordenar === "precio-desc") orderBy = [{ precio: "desc" }];
     if (ordenar === "nombre")      orderBy = [{ nombre: "asc"  }];
     if (ordenar === "recientes")   orderBy = [{ createdAt: "desc" }];
 
-    const include = { categoria: true, proveedor: true };
+    const include = {
+      categoria: { select: { id: true, nombre: true } },
+    };
 
-    // ── Sin paginación (destacados o limit) ───────────────────────────────
-    if (destacados || limit) {
+    // ── Sin paginación (limit o destacados) ───────────────────
+    if (limit || (destacados && !searchParams.get("page"))) {
       const productos = await prisma.producto.findMany({
-        where, include, orderBy,
-        take: limit ?? 8,
+        where, include, orderBy, take: limit ?? 8,
       });
       return Response.json(productos.map(normalizarImagenes));
     }
 
-    // ── Paginado ──────────────────────────────────────────────────────────
+    // ── Paginado ──────────────────────────────────────────────
     const [productos, total] = await Promise.all([
       prisma.producto.findMany({ where, include, orderBy, skip, take: pageSize }),
       prisma.producto.count({ where }),
@@ -130,9 +128,16 @@ export async function GET(request) {
     });
 
   } catch (error) {
-    console.error("Error al obtener productos:", error);
+    console.error("[GET /api/productos]", error);
     return Response.json({ error: error.message }, { status: 500 });
   }
 }
 
-export const dynamic = 'force-dynamic'; // ← AGREGAR ESTA LÍNEA
+
+// ══════════════════════════════════════════════════════════════
+// src/app/api/productos/[id]/route.js
+// ══════════════════════════════════════════════════════════════
+
+export async function GET_byId(request, context) {
+  // Guardado en archivo separado — ver [id]/route.js
+}

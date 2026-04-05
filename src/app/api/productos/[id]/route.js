@@ -1,8 +1,10 @@
 // ══════════════════════════════════════════════════════════════
 // src/app/api/productos/[id]/route.js
 // ══════════════════════════════════════════════════════════════
-import { prisma, TENANT_ID } from "@/lib/prisma";
- 
+import { prisma } from "@/lib/prisma";
+
+export const dynamic = "force-dynamic";
+
 function normalizarImagenes(producto) {
   let imagenes = [];
   if (Array.isArray(producto.imagenes)) {
@@ -19,44 +21,54 @@ function normalizarImagenes(producto) {
       imagenes = [producto.imagenes];
     }
   }
-  const imagenesValidas = imagenes.filter(
+  const validas = imagenes.filter(
     (url) => url && typeof url === "string" && url.startsWith("http")
   );
-  if (imagenesValidas.length === 0 && producto.imagen?.startsWith("http")) {
-    imagenesValidas.push(producto.imagen);
+  if (validas.length === 0 && producto.imagen?.startsWith("http")) {
+    validas.push(producto.imagen);
   }
-  return { ...producto, imagenes: imagenesValidas };
+  return { ...producto, imagenes: validas };
 }
- 
+
 export async function GET(request, context) {
   try {
-    const params = await context.params;
-    const productId = params.id; // DevHub usa cuid (string), no parseInt
- 
-    if (!productId) {
+    const params    = await context.params;
+    const productId = params.id;
+
+    if (!productId)
       return Response.json({ error: "ID de producto inválido" }, { status: 400 });
-    }
- 
+
     const producto = await prisma.producto.findFirst({
-      where: {
-        id: productId,
-        tenantId: TENANT_ID, // ← seguridad: no puede pedir productos de otro tenant
-        activo: true,
-      },
+      where:   { id: productId, activo: true },
       include: {
-        categoria: true,
-        proveedor: true,
+        categoria: { select: { id: true, nombre: true } },
+        variantes: {
+          where:   { activo: true },
+          orderBy: [{ talle: "asc" }, { color: "asc" }],
+          select:  { id: true, talle: true, color: true, stock: true, precio: true },
+        },
       },
     });
- 
-    if (!producto) {
+
+    if (!producto)
       return Response.json({ error: "Producto no encontrado" }, { status: 404 });
-    }
- 
+
     return Response.json(normalizarImagenes(producto));
   } catch (error) {
-    console.error("Error al obtener producto:", error);
+    console.error("[GET /api/productos/:id]", error);
     return Response.json({ error: error.message }, { status: 500 });
   }
 }
- 
+
+
+// ══════════════════════════════════════════════════════════════
+// src/app/api/categorias/route.js
+// ══════════════════════════════════════════════════════════════
+
+import { prisma as prismaClient } from "@/lib/prisma";
+
+export const revalidate = 60;
+
+export async function GET_categorias() {
+  // Guardado en archivo separado — ver categorias/route.js
+}

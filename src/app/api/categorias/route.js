@@ -1,38 +1,31 @@
 // ══════════════════════════════════════════════════════════════
 // src/app/api/categorias/route.js
+// API pública — tienda online Hoky (sin tenantId)
 // ══════════════════════════════════════════════════════════════
-// NOTA: Este archivo va en src/app/api/categorias/route.js
-// Se muestra aquí junto para referencia.
- 
+import { prisma } from "@/lib/prisma";
 
-import { prisma, TENANT_ID } from "@/lib/prisma";
- 
-export const revalidate = 0;
- 
+export const revalidate = 60;
+export const dynamic    = "force-dynamic";
+
 export async function GET() {
   try {
     const categorias = await prisma.categoria.findMany({
-      where: { tenantId: TENANT_ID },  // ← único cambio vs JMR
-      orderBy: { nombre: "asc" },
+      where:   { activo: true },
+      orderBy: { orden: "asc" },
       include: {
         _count: {
           select: {
             productos: {
-              where: {
-                tenantId: TENANT_ID,
-                activo: true,
-                stock: { gt: 0 },
-              },
+              where: { activo: true, stock: { gt: 0 } },
             },
           },
         },
       },
     });
- 
+
     return Response.json(categorias);
   } catch (error) {
-    console.error("Error al obtener categorías:", error);
+    console.error("[GET /api/categorias]", error);
     return Response.json({ error: error.message }, { status: 500 });
   }
 }
-

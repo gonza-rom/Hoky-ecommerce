@@ -1,3 +1,7 @@
+// prisma/schema.prisma
+// Hoky Indumentaria — Tienda Online Independiente
+// Base de datos propia en Supabase, sin dependencia de DevHub POS
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,396 +12,243 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+// ═══════════════════════════════════════════════════════════════
+// CATÁLOGO
+// ═══════════════════════════════════════════════════════════════
+
 model Categoria {
-  id          String     @id
-  tenantId    String
-  nombre      String
+  id          String     @id @default(cuid())
+  nombre      String     @unique
   descripcion String?
+  imagen      String?
+  activo      Boolean    @default(true)
+  orden       Int        @default(0)   // para ordenar el menú
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
-  Tenant      Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   productos   Producto[]
 
-  @@unique([tenantId, nombre])
-  @@index([tenantId])
-}
-
-model Proveedor {
-  id        String     @id
-  tenantId  String
-  nombre    String
-  telefono  String?
-  email     String?
-  direccion String?
-  notas     String?
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  productos Producto[]
-  Tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  @@index([email])
-  @@index([tenantId])
+  @@index([activo])
+  @@index([orden])
 }
 
 model Producto {
-  id              String            @id
-  tenantId        String
-  nombre          String
-  descripcion     String?
-  codigoProducto  String?
-  codigoBarras    String?
-  precio          Float
-  costo           Float?
-  stock           Int               @default(0)
-  stockMinimo     Int               @default(5)
-  unidad          String?
-  imagen          String?
-  imagenes        String[]          @default([])
-  activo          Boolean           @default(true)
-  categoriaId     String?
-  proveedorId     String?
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  movimientos     Movimiento[]
-  precioHistorico PrecioHistorico[]
-  categoria       Categoria?        @relation(fields: [categoriaId], references: [id])
-  proveedor       Proveedor?        @relation(fields: [proveedorId], references: [id])
-  Tenant          Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  ventaItems      VentaItem[]
+  id             String            @id @default(cuid())
+  nombre         String
+  descripcion    String?
+  codigoProducto String?           @unique
+  codigoBarras   String?           @unique
+  precio         Float
+  precioAnterior Float?            // para mostrar precio tachado
+  costo          Float?
+  stock          Int               @default(0)
+  stockMinimo    Int               @default(1)
+  unidad         String?
+  imagen         String?
+  imagenes       String[]          @default([])
+  activo         Boolean           @default(true)
+  destacado      Boolean           @default(false)
+  tieneVariantes Boolean           @default(false)
+  categoriaId    String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
 
-  @@unique([tenantId, codigoBarras])
-  @@unique([tenantId, codigoProducto])
-  @@index([categoriaId])
-  @@index([codigoBarras])
-  @@index([proveedorId])
-  @@index([tenantId, activo])
-  @@index([tenantId, activo, nombre])
-  @@index([tenantId, activo, stock])
-  @@index([tenantId, categoriaId])
-  @@index([tenantId])
-  @@index([tenantId, nombre])
-  @@index([tenantId, stock])
-}
-
-model Movimiento {
-  id                String         @id
-  tenantId          String
-  productoId        String
-  productoNombre    String
-  tipo              TipoMovimiento
-  cantidad          Int
-  stockAnterior     Int?
-  stockResultante   Int?
-  motivo            String?
-  ventaId           String?
-  usuarioId         String?
-  usuarioNombre     String?
-  cancelado         Boolean        @default(false)
-  motivoCancelacion String?
-  canceladoPor      String?
-  canceladoAt       DateTime?
-  createdAt         DateTime       @default(now())
-  producto          Producto       @relation(fields: [productoId], references: [id])
-  Tenant            Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  Venta             Venta?         @relation(fields: [ventaId], references: [id])
-
-  @@index([productoId, createdAt])
-  @@index([tenantId, cancelado, createdAt])
-  @@index([tenantId, createdAt(sort: Desc)], map: "Movimiento_tenantId_createdAt_desc_idx")
-  @@index([tenantId, createdAt])
-  @@index([tenantId])
-  @@index([tenantId, productoId])
-  @@index([tenantId, tipo, createdAt])
-  @@index([tenantId, tipo])
-  @@index([ventaId])
-}
-
-model Venta {
-  id                String        @id
-  tenantId          String
-  total             Float
-  subtotal          Float?
-  descuento         Float?        @default(0)
-  metodoPago        String
-  clienteNombre     String?
-  clienteDni        String?
-  observaciones     String?
-  usuarioId         String?
-  usuarioNombre     String?
-  createdAt         DateTime      @default(now())
-  cancelado         Boolean       @default(false)
-  canceladoAt       DateTime?
-  motivoCancelacion String?
-  Movimiento        Movimiento[]
-  Tenant            Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  items             VentaItem[]
-  comprobantes      comprobantes?
-
-  @@index([clienteDni])
-  @@index([clienteNombre])
-  @@index([tenantId, cancelado])
-  @@index([tenantId, createdAt(sort: Desc)], map: "Venta_tenantId_createdAt_desc_idx")
-  @@index([tenantId, createdAt])
-  @@index([tenantId])
-  @@index([tenantId, metodoPago, createdAt])
-  @@index([tenantId, metodoPago])
-  @@index([tenantId, usuarioId])
-}
-
-model VentaItem {
-  id         String    @id
-  ventaId    String
-  productoId String?
-  nombre     String
-  cantidad   Int
-  precioUnit Float
-  subtotal   Float
-  producto   Producto? @relation(fields: [productoId], references: [id])
-  venta      Venta     @relation(fields: [ventaId], references: [id], onDelete: Cascade)
-
-  @@index([productoId])
-  @@index([productoId, ventaId])
-  @@index([ventaId])
-  @@index([ventaId, productoId])
-}
-
-model PrecioHistorico {
-  id          String   @id
-  tenantId    String
-  productoId  String
-  precioViejo Float
-  precioNuevo Float
-  motivo      String?
-  usuarioId   String?
-  createdAt   DateTime @default(now())
-  producto    Producto @relation(fields: [productoId], references: [id], onDelete: Cascade)
-  Tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  @@index([createdAt])
-  @@index([productoId])
-  @@index([tenantId])
-}
-
-model Caja {
-  id             String           @id
-  tenantId       String
-  usuarioId      String?
-  usuarioNombre  String?
-  saldoInicial   Float
-  saldoFinal     Float?
-  saldoContado   Float?
-  diferencia     Float?
-  observaciones  String?
-  abiertaAt      DateTime         @default(now())
-  cerradaAt      DateTime?
-  estado         String           @default("ABIERTA")
-  turno          String?
-  Tenant         Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  MovimientoCaja MovimientoCaja[]
-
-  @@index([tenantId, abiertaAt])
-  @@index([tenantId, cerradaAt(sort: Desc)], map: "Caja_tenantId_cerradaAt_desc_idx")
-  @@index([tenantId, estado, abiertaAt])
-  @@index([tenantId, estado])
-  @@index([tenantId])
-}
-
-model ConfiguracionTurnos {
-  id           String   @id
-  tenantId     String   @unique
-  mananaInicio String
-  mananaFin    String
-  tardeInicio  String
-  tardeFin     String
-  nocheInicio  String?
-  nocheFin     String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime
-}
-
-model MovimientoCaja {
-  id            String             @id
-  tenantId      String
-  cajaId        String
-  tipo          TipoMovimientoCaja
-  monto         Float
-  descripcion   String?
-  ventaId       String?
-  usuarioId     String?
-  usuarioNombre String?
-  createdAt     DateTime           @default(now())
-  metodoPago    String?
-  Caja          Caja               @relation(fields: [cajaId], references: [id], onDelete: Cascade)
-
-  @@index([cajaId, createdAt])
-  @@index([cajaId])
-  @@index([cajaId, tipo])
-  @@index([tenantId, createdAt])
-  @@index([tenantId])
-  @@index([ventaId])
-}
-
-model Suscripcion {
-  id                 String    @id
-  tenantId           String    @unique
-  plan               PlanTipo
-  estado             String    @default("pending")
-  mpPreapprovalId    String?
-  mpSubscriptionId   String?
-  proximoVencimiento DateTime?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime
-  Tenant             Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  @@index([estado])
-  @@index([proximoVencimiento])
-}
-
-model Tenant {
-  id                   String                @id
-  nombre               String
-  email                String                @unique
-  slug                 String                @unique
-  logoUrl              String?
-  telefono             String?
-  direccion            String?
-  ciudad               String?
-  plan                 PlanTipo              @default(FREE)
-  activo               Boolean               @default(true)
-  createdAt            DateTime              @default(now())
-  updatedAt            DateTime
-  cuit                 String?
-  descripcion          String?
-  facebook             String?
-  instagram            String?
-  provincia            String?
-  sitioWeb             String?
-  trialVenceAt         DateTime?
-  horariosTurnos       Json?
-  Caja                 Caja[]
-  Categoria            Categoria[]
-  Movimiento           Movimiento[]
-  PrecioHistorico      PrecioHistorico[]
-  Producto             Producto[]
-  Proveedor            Proveedor[]
-  Suscripcion          Suscripcion?
-  UsuarioTenant        UsuarioTenant[]
-  Venta                Venta[]
-  comprobantes         comprobantes[]
-  configuraciones_afip configuraciones_afip?
+  categoria      Categoria?        @relation(fields: [categoriaId], references: [id])
+  variantes      ProductoVariante[]
+  pedidoItems    PedidoItem[]
 
   @@index([activo])
-  @@index([createdAt])
-  @@index([plan])
+  @@index([categoriaId])
+  @@index([destacado])
+  @@index([activo, categoriaId])
+  @@index([activo, destacado])
 }
 
-model UsuarioTenant {
-  id         String    @id
-  tenantId   String
-  supabaseId String    @unique
-  nombre     String
-  email      String
-  rol        RolTenant @default(EMPLEADO)
-  activo     Boolean   @default(true)
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime
-  Tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+model ProductoVariante {
+  id         String       @id @default(cuid())
+  productoId String
+  talle      String?
+  color      String?
+  stock      Int          @default(0)
+  precio     Float?       // null = usa precio base del producto
+  activo     Boolean      @default(true)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
 
-  @@unique([tenantId, email])
+  producto   Producto     @relation(fields: [productoId], references: [id], onDelete: Cascade)
+  pedidoItems PedidoItem[]
+
+  @@unique([productoId, talle, color])
+  @@index([productoId])
+  @@index([productoId, activo])
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CLIENTES
+// ═══════════════════════════════════════════════════════════════
+
+model Cliente {
+  id         String      @id @default(cuid())
+  supabaseId String?     @unique  // si usás Supabase Auth
+  email      String      @unique
+  nombre     String
+  telefono   String?
+  dni        String?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  direcciones Direccion[]
+  pedidos     Pedido[]
+
   @@index([email])
   @@index([supabaseId])
-  @@index([tenantId, activo])
-  @@index([tenantId])
-  @@index([tenantId, rol])
 }
 
-model comprobantes {
-  id                String   @id
-  tenantId          String
-  ventaId           String?  @unique
-  puntoVenta        Int
-  tipoComprobante   Int
-  numeroComprobante Int
-  cae               String
-  caeFchVto         String
-  qrData            String?
-  docTipo           Int      @default(99)
-  docNro            BigInt   @default(0)
-  clienteNombre     String?
-  clienteEmail      String?
-  clienteDireccion  String?
-  total             Float
-  neto              Float
-  iva               Float
-  descuento         Float    @default(0)
-  importeNoGravado  Float    @default(0)
-  importeExento     Float    @default(0)
-  importeTributos   Float    @default(0)
-  monedaId          String   @default("PES")
-  monedaCotizacion  Float    @default(1)
-  ivaDetalle        Json?
-  items             Json
-  fecha             DateTime
-  resultado         String   @default("A")
-  observaciones     String?
-  concepto          Int      @default(1)
-  metodoPago        String?
-  usuarioId         String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime
-  Tenant            Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  Venta             Venta?   @relation(fields: [ventaId], references: [id])
+model Direccion {
+  id           String    @id @default(cuid())
+  clienteId    String
+  alias        String?   // ej: "Casa", "Trabajo"
+  calle        String
+  numero       String?
+  piso         String?
+  departamento String?
+  ciudad       String
+  provincia    String
+  codigoPostal String
+  esPrincipal  Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
-  @@index([cae])
-  @@index([fecha])
-  @@index([numeroComprobante, puntoVenta, tipoComprobante])
-  @@index([tenantId])
-  @@index([ventaId])
+  cliente  Cliente  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  pedidos  Pedido[]
+
+  @@index([clienteId])
+  @@index([clienteId, esPrincipal])
 }
 
-model configuraciones_afip {
-  id              String    @id
-  tenantId        String    @unique
-  cuit            String
-  razonSocial     String?
-  puntoVenta      Int       @default(1)
-  condicionFiscal String    @default("MT")
-  certificado     String
-  clavePrivada    String
-  ambiente        String    @default("testing")
-  activo          Boolean   @default(true)
-  ultimaConexion  DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime
-  Tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+// ═══════════════════════════════════════════════════════════════
+// PEDIDOS
+// ═══════════════════════════════════════════════════════════════
 
-  @@index([tenantId])
+model Pedido {
+  id           String       @id @default(cuid())
+  clienteId    String?      // null si compra como invitado
+  direccionId  String?
+
+  // Estado del pedido
+  estado       EstadoPedido @default(PENDIENTE)
+
+  // Importes
+  subtotal     Float
+  descuento    Float        @default(0)
+  costoEnvio   Float        @default(0)
+  total        Float
+
+  // Pago
+  metodoPago   String?      // mercadopago | transferencia | efectivo
+  mpPaymentId  String?      // ID del pago en Mercado Pago
+  mpStatus     String?      // approved | pending | rejected
+  pagadoAt     DateTime?
+
+  // Envío
+  tipoEnvio    String?      // retiro | envio
+  tracking     String?
+  enviadoAt    DateTime?
+  entregadoAt  DateTime?
+
+  // Datos del comprador (se guardan por si el cliente no está registrado)
+  compradorNombre   String?
+  compradorEmail    String?
+  compradorTelefono String?
+
+  notas        String?
+  notasInternas String?    // notas del comercio, no visibles al cliente
+
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  cliente   Cliente?    @relation(fields: [clienteId], references: [id])
+  direccion Direccion?  @relation(fields: [direccionId], references: [id])
+  items     PedidoItem[]
+
+  @@index([estado])
+  @@index([clienteId])
+  @@index([mpPaymentId])
+  @@index([createdAt])
+  @@index([estado, createdAt])
 }
 
-enum PlanTipo {
-  FREE
-  PRO
-  ENTERPRISE
+model PedidoItem {
+  id          String  @id @default(cuid())
+  pedidoId    String
+  productoId  String?
+  varianteId  String?
+
+  // Se guardan al momento de la compra por si el producto cambia de precio
+  nombre      String
+  precio      Float
+  cantidad    Int
+  subtotal    Float
+  talle       String?
+  color       String?
+  imagen      String?
+
+  pedido    Pedido            @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  producto  Producto?         @relation(fields: [productoId], references: [id])
+  variante  ProductoVariante? @relation(fields: [varianteId], references: [id])
+
+  @@index([pedidoId])
+  @@index([productoId])
 }
 
-enum RolTenant {
-  PROPIETARIO
-  ADMINISTRADOR
-  EMPLEADO
+// ═══════════════════════════════════════════════════════════════
+// CONFIGURACIÓN
+// ═══════════════════════════════════════════════════════════════
+
+model ConfigTienda {
+  id    String @id @default(cuid())
+
+  // Mercado Pago
+  mpPublicKey      String?
+  mpAccessToken    String?  // guardar encriptado
+  mpWebhookSecret  String?
+
+  // Envío
+  costoEnvioBase   Float    @default(0)
+  envioGratisDesde Float?   // null = sin envío gratis
+  zonaEnvio        String?  // descripción de zonas
+
+  // Compra mínima
+  montoMinimo      Float    @default(0)
+
+  // Retiro en local
+  permitirRetiro   Boolean  @default(true)
+  direccionLocal   String?
+  horarioLocal     String?
+
+  // Contacto
+  whatsapp         String?
+  instagram        String?
+  email            String?
+
+  // Textos
+  bannerTexto      String?
+  politicaEnvio    String?
+  politicaCambios  String?
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }
 
-enum TipoMovimiento {
-  ENTRADA
-  SALIDA
-  VENTA
-  AJUSTE
-}
+// ═══════════════════════════════════════════════════════════════
+// ENUMS
+// ═══════════════════════════════════════════════════════════════
 
-enum TipoMovimientoCaja {
-  APERTURA
-  VENTA_EFECTIVO
-  INGRESO
-  EGRESO
-  CIERRE
-  VENTA_VIRTUAL
+enum EstadoPedido {
+  PENDIENTE      // creado, esperando pago
+  PAGADO         // pago confirmado
+  EN_PREPARACION // el comercio lo está preparando
+  EN_CAMINO      // fue despachado
+  ENTREGADO      // entregado al cliente
+  CANCELADO      // cancelado
+  REEMBOLSADO    // reembolso procesado
 }
