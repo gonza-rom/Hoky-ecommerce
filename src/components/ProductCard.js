@@ -1,4 +1,5 @@
 'use client';
+// src/components/ProductCard.js
 
 import Image from 'next/image';
 import Link from 'next/link';
@@ -6,8 +7,28 @@ import { ShoppingBag, Eye } from 'lucide-react';
 import { getImagenesValidas } from './ProductGallery';
 
 export default function ProductCard({ producto, onAddToCart }) {
-  const images = getImagenesValidas(producto);
+  const images          = getImagenesValidas(producto);
   const imagenPrincipal = images[0] || null;
+
+  // Colores únicos de variantes activas con stock
+  const coloresUnicos = producto.variantes
+    ? [...new Set(
+        producto.variantes
+          .filter(v => v.stock > 0)
+          .map(v => v.color)
+          .filter(Boolean)
+      )]
+    : [];
+
+  // Talles únicos con stock
+  const tallesUnicos = producto.variantes
+    ? [...new Set(
+        producto.variantes
+          .filter(v => v.stock > 0)
+          .map(v => v.talle)
+          .filter(Boolean)
+      )]
+    : [];
 
   return (
     <div className="bg-white overflow-hidden hover:shadow-lg transition-all duration-300 flex flex-col group border border-gray-100 hover:border-gray-300 rounded-sm product-card">
@@ -50,8 +71,25 @@ export default function ProductCard({ producto, onAddToCart }) {
             </div>
           )}
 
-          {/* Hover overlay */}
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-colors flex items-end justify-center pb-4 opacity-0 group-hover:opacity-100">
+          {/* Hover overlay con talles disponibles */}
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-colors flex flex-col items-center justify-end pb-3 gap-2 opacity-0 group-hover:opacity-100">
+            {/* Talles */}
+            {tallesUnicos.length > 0 && (
+              <div className="flex gap-1 flex-wrap justify-center px-2">
+                {tallesUnicos.map(talle => (
+                  <span key={talle} style={{
+                    background: 'rgba(255,255,255,0.92)',
+                    color: '#111',
+                    fontSize: 9,
+                    fontWeight: 700,
+                    padding: '2px 5px',
+                    letterSpacing: '0.05em',
+                  }}>
+                    {talle}
+                  </span>
+                ))}
+              </div>
+            )}
             <span className="bg-white text-hoky-black px-4 py-2 text-xs font-semibold tracking-[0.1em] uppercase flex items-center gap-2">
               <Eye className="w-3.5 h-3.5" />
               Ver producto
@@ -73,10 +111,31 @@ export default function ProductCard({ producto, onAddToCart }) {
           </h3>
         </Link>
 
+        {/* Dots de colores */}
+        {coloresUnicos.length > 0 && (
+          <div className="flex gap-1 mb-2 flex-wrap">
+            {coloresUnicos.slice(0, 6).map(color => (
+              <ColorDot key={color} color={color} />
+            ))}
+            {coloresUnicos.length > 6 && (
+              <span style={{ fontSize: 10, color: '#aaa', alignSelf: 'center' }}>
+                +{coloresUnicos.length - 6}
+              </span>
+            )}
+          </div>
+        )}
+
         <div className="mt-auto flex items-center justify-between">
-          <p className="text-base font-bold text-hoky-black">
-            ${producto.precio.toFixed(2)}
-          </p>
+          <div>
+            {producto.precioAnterior && producto.precioAnterior > producto.precio && (
+              <p style={{ fontSize: 11, color: '#aaa', textDecoration: 'line-through', margin: 0 }}>
+                ${producto.precioAnterior.toLocaleString('es-AR')}
+              </p>
+            )}
+            <p className="text-base font-bold text-hoky-black">
+              ${producto.precio.toLocaleString('es-AR')}
+            </p>
+          </div>
           <button
             onClick={(e) => { e.preventDefault(); onAddToCart(producto, 1); }}
             disabled={producto.stock === 0}
@@ -87,6 +146,45 @@ export default function ProductCard({ producto, onAddToCart }) {
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── Dot de color ──────────────────────────────────────────────
+const COLOR_MAP = {
+  negro:    '#111111', black:    '#111111',
+  blanco:   '#ffffff', white:    '#ffffff',
+  rojo:     '#ef4444', red:      '#ef4444',
+  azul:     '#3b82f6', blue:     '#3b82f6',
+  verde:    '#22c55e', green:    '#22c55e',
+  amarillo: '#eab308', yellow:   '#eab308',
+  naranja:  '#f97316', orange:   '#f97316',
+  rosa:     '#ec4899', pink:     '#ec4899',
+  violeta:  '#8b5cf6', purple:   '#8b5cf6',
+  gris:     '#9ca3af', grey:     '#9ca3af', gray: '#9ca3af',
+  marron:   '#92400e', marrón:   '#92400e', brown: '#92400e',
+  beige:    '#d4cfc9',
+  celeste:  '#7dd3fc',
+  bordo:    '#9f1239', burdeos:  '#9f1239',
+  camel:    '#c8a26b',
+};
+
+function ColorDot({ color }) {
+  const hex = COLOR_MAP[color?.toLowerCase()] ?? null;
+  return (
+    <div
+      title={color}
+      style={{
+        width:  14, height: 14, borderRadius: '50%',
+        background: hex ?? '#e5e5e5',
+        border: hex === '#ffffff' || hex === null ? '1px solid #ddd' : '1px solid transparent',
+        flexShrink: 0,
+        // Si no hay color mapeado, mostramos las iniciales
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 7, fontWeight: 700, color: '#888',
+      }}
+    >
+      {!hex && color?.slice(0, 1).toUpperCase()}
     </div>
   );
 }
