@@ -10,7 +10,7 @@ export function CartProvider({ children }) {
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    const savedCart = localStorage.getItem('jmr-cart');
+    const savedCart = localStorage.getItem('hoky-cart');
     if (savedCart) {
       setCart(JSON.parse(savedCart));
     }
@@ -18,9 +18,9 @@ export function CartProvider({ children }) {
 
   useEffect(() => {
     if (cart.length > 0) {
-      localStorage.setItem('jmr-cart', JSON.stringify(cart));
+      localStorage.setItem('hoky-cart', JSON.stringify(cart));
     } else {
-      localStorage.removeItem('jmr-cart');
+      localStorage.removeItem('hoky-cart');
     }
   }, [cart]);
 
@@ -102,7 +102,7 @@ export function CartProvider({ children }) {
     }
     
     setCart([]);
-    localStorage.removeItem('jmr-cart');
+    localStorage.removeItem('hoky-cart');
   };
 
   const getTotal = () => {
