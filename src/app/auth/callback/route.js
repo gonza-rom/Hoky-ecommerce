@@ -1,11 +1,7 @@
 // src/app/auth/callback/route.js
-// Maneja:
-//  1. Google OAuth (code en query params)
-//  2. Confirmación de email (code en query params)
-// Después de intercambiar el código → sincroniza el Cliente en la BD.
-
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { prisma }       from '@/lib/prisma';
 
 export async function GET(request) {
   const { searchParams, origin } = new URL(request.url);
@@ -17,12 +13,27 @@ export async function GET(request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
-      // Sincronizar con la tabla Cliente — llamamos internamente a nuestra API
+      // Sincronizar Cliente directamente (sin fetch interno)
       try {
-        await fetch(`${origin}/api/auth/sync`, {
-          method:  'POST',
-          headers: { 'Cookie': request.headers.get('cookie') ?? '' },
-        });
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await prisma.cliente.upsert({
+            where:  { supabaseId: user.id },
+            update: {
+              email:  user.email,
+              nombre: user.user_metadata?.nombre
+                        ?? user.user_metadata?.full_name
+                        ?? user.email.split('@')[0],
+            },
+            create: {
+              supabaseId: user.id,
+              email:      user.email,
+              nombre:     user.user_metadata?.nombre
+                            ?? user.user_metadata?.full_name
+                            ?? user.email.split('@')[0],
+            },
+          });
+        }
       } catch (e) {
         console.error('[callback] Error al sincronizar cliente:', e);
         // No bloqueamos el redirect aunque falle el sync
