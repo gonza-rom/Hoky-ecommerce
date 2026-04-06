@@ -91,7 +91,7 @@ export default function Footer() {
                 Envíos y cambios
               </Link>
               <span>·</span>
-              <p>Desarrollado por Gonzalo Romero · DevHub</p>
+              <p>Desarrollado por el equipo de · DevHub</p>
             </div>
           </div>
         </div>

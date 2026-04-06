@@ -60,7 +60,6 @@ export default function ProductoDetallePage() {
     } catch {}
   }, []);
 
-  // FIX: useCallback para que fetchProducto sea estable entre renders
   const fetchProducto = useCallback(async () => {
     if (!params.id) return;
     try {
@@ -76,13 +75,7 @@ export default function ProductoDetallePage() {
 
   useEffect(() => { fetchProducto(); }, [fetchProducto]);
 
-  // FIX: memoizar el array de variantes para que los useMemo de abajo
-  // no recalculen en cada render cuando producto.variantes es la misma referencia
-  const variantes = useMemo(
-    () => producto?.variantes ?? [],
-    [producto]
-  );
-
+  const variantes = useMemo(() => producto?.variantes ?? [], [producto]);
   const tieneVariantes = !!(producto?.tieneVariantes && variantes.length > 0);
 
   const tallesDisponibles = useMemo(() => {
@@ -106,11 +99,10 @@ export default function ProductoDetallePage() {
     ) ?? null;
   }, [variantes, tieneVariantes, talleSeleccionado, colorSeleccionado]);
 
-  const stockEfectivo = tieneVariantes
-    ? (varianteSeleccionada?.stock ?? 0)
-    : (producto?.stock ?? 0);
-
-  const precioEfectivo = varianteSeleccionada?.precio ?? producto?.precio ?? 0;
+  const stockEfectivo  = tieneVariantes ? (varianteSeleccionada?.stock ?? 0) : (producto?.stock ?? 0);
+  const precioBase     = varianteSeleccionada?.precio ?? producto?.precio ?? 0;
+  const descuento      = producto?.descuentoEfectivo ?? 10;
+  const precioConDesc  = Math.round(precioBase * (1 - descuento / 100));
 
   const handleTalle = (talle) => {
     setTalleSeleccionado(prev => prev === talle ? '' : talle);
@@ -126,19 +118,13 @@ export default function ProductoDetallePage() {
   const handleAgregarCarrito = () => {
     if (!producto) return;
     if (tieneVariantes) {
-      if (tallesDisponibles.length > 0 && !talleSeleccionado) {
-        setErrorVariante('Seleccioná un talle'); return;
-      }
-      if (coloresDisponibles.length > 0 && !colorSeleccionado) {
-        setErrorVariante('Seleccioná un color'); return;
-      }
-      if (!varianteSeleccionada || varianteSeleccionada.stock === 0) {
-        setErrorVariante('Combinación sin stock'); return;
-      }
+      if (tallesDisponibles.length > 0 && !talleSeleccionado) { setErrorVariante('Seleccioná un talle'); return; }
+      if (coloresDisponibles.length > 0 && !colorSeleccionado) { setErrorVariante('Seleccioná un color'); return; }
+      if (!varianteSeleccionada || varianteSeleccionada.stock === 0) { setErrorVariante('Combinación sin stock'); return; }
     }
     const item = {
       ...producto,
-      precio:     precioEfectivo,
+      precio:     precioBase,
       varianteId: varianteSeleccionada?.id ?? null,
       talle:      talleSeleccionado || null,
       color:      colorSeleccionado || null,
@@ -156,7 +142,7 @@ export default function ProductoDetallePage() {
       `¡Hola! Me interesa este producto:\n\n` +
       `*${producto.nombre}*${varInfo ? `\n${varInfo}` : ''}\n` +
       `Cantidad: ${cantidad}\n` +
-      `Precio: $${precioEfectivo.toFixed(2)}\n\n¿Está disponible?`;
+      `Precio: $${precioBase.toLocaleString('es-AR')}\n\n¿Está disponible?`;
     window.open(`https://wa.me/543834644467?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
@@ -243,18 +229,55 @@ export default function ProductoDetallePage() {
                 </Link>
               )}
 
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3 leading-tight tracking-tight uppercase">
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4 leading-tight tracking-tight uppercase">
                 {producto.nombre}
               </h1>
 
-              <div className="mb-5 pb-5 border-b flex items-baseline gap-3">
-                <span className="text-3xl md:text-4xl font-bold text-hoky-black">
-                  ${precioEfectivo.toLocaleString('es-AR')}
-                </span>
-                {producto.precioAnterior && producto.precioAnterior > precioEfectivo && (
-                  <span className="text-lg text-gray-400 line-through">
-                    ${producto.precioAnterior.toLocaleString('es-AR')}
-                  </span>
+              {/* ── Bloque de precios ── */}
+              <div className="mb-5 pb-5 border-b">
+
+                {/* Precio anterior tachado (oferta) */}
+                {producto.precioAnterior && producto.precioAnterior > precioBase && (
+                  <p className="text-sm text-gray-400 line-through mb-1">
+                    Antes: ${producto.precioAnterior.toLocaleString('es-AR')}
+                  </p>
+                )}
+
+                {/* Grilla de métodos de pago */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 10 }}>
+                  {[
+                    { emoji: '💳', label: 'Tarjeta / MP', precio: precioBase,    highlight: false },
+                    { emoji: '🏦', label: 'Transferencia', precio: precioConDesc, highlight: true  },
+                    { emoji: '💵', label: 'Efectivo',      precio: precioConDesc, highlight: true  },
+                  ].map(({ emoji, label, precio, highlight }) => (
+                    <div key={label} style={{
+                      background:   highlight ? '#f0fdf4' : '#f9fafb',
+                      border:       `1px solid ${highlight ? '#bbf7d0' : '#e5e7eb'}`,
+                      borderRadius: 10,
+                      padding:      '10px 8px',
+                      textAlign:    'center',
+                    }}>
+                      <p style={{ fontSize: 11, color: highlight ? '#16a34a' : '#6b7280', margin: '0 0 4px', fontWeight: 600 }}>
+                        {emoji} {label}
+                      </p>
+                      <p style={{ fontSize: 18, fontWeight: 800, color: highlight ? '#15803d' : '#111', margin: 0 }}>
+                        ${precio.toLocaleString('es-AR')}
+                      </p>
+                      {highlight && (
+                        <p style={{ fontSize: 10, color: '#16a34a', margin: '3px 0 0', fontWeight: 600 }}>
+                          {descuento}% OFF
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Subtotal si cantidad > 1 */}
+                {cantidad > 1 && (
+                  <p className="text-sm text-gray-500 mt-2">
+                    Subtotal: <strong className="text-hoky-black">${(precioConDesc * cantidad).toLocaleString('es-AR')}</strong>
+                    <span className="text-xs text-gray-400 ml-1">(ef./transf.)</span>
+                  </p>
                 )}
               </div>
 
@@ -266,7 +289,7 @@ export default function ProductoDetallePage() {
 
               {tallesDisponibles.length > 0 && (
                 <div className="mb-5">
-                  <p className="text-xs font-700 tracking-widest uppercase text-gray-500 mb-2 font-semibold">
+                  <p className="text-xs font-semibold tracking-widest uppercase text-gray-500 mb-2">
                     Talle{talleSeleccionado && <span className="ml-2 text-hoky-black normal-case font-bold">{talleSeleccionado}</span>}
                   </p>
                   <div className="flex gap-2 flex-wrap">
@@ -347,9 +370,6 @@ export default function ProductoDetallePage() {
                         <Plus className="w-4 h-4" />
                       </button>
                     </div>
-                    <span className="text-gray-500 text-sm">
-                      Total: <strong className="text-hoky-black">${(precioEfectivo * cantidad).toLocaleString('es-AR')}</strong>
-                    </span>
                   </div>
                 </div>
               )}

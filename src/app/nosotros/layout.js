@@ -1,4 +1,4 @@
-export const metadata_NOSOTROS = {
+export const metadata = {
   title:       'Nosotros — Hoky Indumentaria',
   description: 'Conocé la historia de Hoky Indumentaria. Ropa urbana nacida en Catamarca, pensada para la calle.',
   keywords:    'hoky indumentaria, quienes somos, historia, catamarca, ropa urbana',
@@ -16,3 +16,7 @@ export const metadata_NOSOTROS = {
     description: 'Ropa urbana nacida en Catamarca, pensada para la calle.',
   },
 };
+
+export default function NosotrosLayout({ children }) {
+  return children;
+}

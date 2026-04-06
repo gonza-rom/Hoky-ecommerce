@@ -1,6 +1,6 @@
 // src/app/api/admin/productos/route.js
-import { NextResponse } from "next/server";
-import { prisma }       from "@/lib/prisma";
+import { NextResponse }  from "next/server";
+import { prisma }        from "@/lib/prisma";
 import { revalidateTag } from "next/cache";
 
 function toNull(value) {
@@ -25,7 +25,7 @@ export async function GET(req) {
 
     const where = { activo: true };
 
-    if (stockBajo) where.stock = { lte: where.stockMinimo ?? 1 };
+    if (stockBajo) where.stock = { lte: 1 };
     if (categoriaId === "sin-categoria") {
       where.categoriaId = { equals: null };
     } else if (categoriaId) {
@@ -52,6 +52,7 @@ export async function GET(req) {
           id: true, nombre: true, descripcion: true,
           codigoProducto: true, codigoBarras: true,
           precio: true, precioAnterior: true, costo: true,
+          descuentoEfectivo: true,
           stock: true, stockMinimo: true, unidad: true,
           imagen: true, imagenes: true,
           activo: true, destacado: true, tieneVariantes: true,
@@ -84,6 +85,7 @@ export async function POST(req) {
     const body = await req.json();
     const {
       nombre, descripcion, precio, precioAnterior, costo,
+      descuentoEfectivo,
       stock, stockMinimo, unidad,
       imagen, imagenes, categoriaId,
       codigoBarras, codigoProducto,
@@ -96,10 +98,9 @@ export async function POST(req) {
     if (!precio || parseFloat(precio) <= 0)
       return NextResponse.json({ ok: false, error: "El precio debe ser mayor a 0" }, { status: 400 });
 
-    const codigoPFinal = toNull(codigoProducto);
+    const codigoPFinal      = toNull(codigoProducto);
     const codigoBarrasFinal = toNull(codigoBarras);
 
-    // Verificar duplicados
     const [dupCodigo, dupBarras] = await Promise.all([
       codigoPFinal
         ? prisma.producto.findFirst({ where: { codigoProducto: codigoPFinal, activo: true }, select: { nombre: true } })
@@ -122,26 +123,26 @@ export async function POST(req) {
     const producto = await prisma.$transaction(async (tx) => {
       const p = await tx.producto.create({
         data: {
-          nombre:         nombre.trim(),
-          descripcion:    toNull(descripcion),
-          precio:         parseFloat(precio),
-          precioAnterior: precioAnterior ? parseFloat(precioAnterior) : null,
-          costo:          costo ? parseFloat(costo) : null,
-          stock:          stockFinal,
-          stockMinimo:    parseInt(stockMinimo) || 1,
-          unidad:         toNull(unidad),
-          imagen:         imagenPrincipal,
-          imagenes:       Array.isArray(imagenes) ? imagenes : [],
-          categoriaId:    toNull(categoriaId),
-          codigoProducto: codigoPFinal,
-          codigoBarras:   codigoBarrasFinal,
+          nombre:            nombre.trim(),
+          descripcion:       toNull(descripcion),
+          precio:            parseFloat(precio),
+          precioAnterior:    precioAnterior ? parseFloat(precioAnterior) : null,
+          costo:             costo ? parseFloat(costo) : null,
+          descuentoEfectivo: descuentoEfectivo != null ? parseFloat(descuentoEfectivo) : 10,
+          stock:             stockFinal,
+          stockMinimo:       parseInt(stockMinimo) || 1,
+          unidad:            toNull(unidad),
+          imagen:            imagenPrincipal,
+          imagenes:          Array.isArray(imagenes) ? imagenes : [],
+          categoriaId:       toNull(categoriaId),
+          codigoProducto:    codigoPFinal,
+          codigoBarras:      codigoBarrasFinal,
           destacado,
           tieneVariantes,
         },
         include: { categoria: { select: { id: true, nombre: true } } },
       });
 
-      // Crear variantes si aplica
       if (tieneVariantes && variantes.length > 0) {
         await tx.productoVariante.createMany({
           data: variantes.map((v) => ({

@@ -10,7 +10,9 @@ const TALLES    = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 
 const FORM_VACIO = {
   nombre: '', descripcion: '', codigoProducto: '', codigoBarras: '',
-  precio: '', precioAnterior: '', costo: '', stock: '0', stockMinimo: '1',
+  precio: '', precioAnterior: '', costo: '',
+  descuentoEfectivo: '10',   // ← NUEVO
+  stock: '0', stockMinimo: '1',
   unidad: '', imagen: '', imagenes: [], categoriaId: '',
   destacado: false, tieneVariantes: false,
 };
@@ -77,21 +79,22 @@ export default function AdminProductosPage() {
 
   async function abrirEditar(producto) {
     setForm({
-      nombre:         producto.nombre,
-      descripcion:    producto.descripcion    ?? '',
-      codigoProducto: producto.codigoProducto ?? '',
-      codigoBarras:   producto.codigoBarras   ?? '',
-      precio:         String(producto.precio),
-      precioAnterior: producto.precioAnterior ? String(producto.precioAnterior) : '',
-      costo:          producto.costo          ? String(producto.costo)          : '',
-      stock:          String(producto.stock),
-      stockMinimo:    String(producto.stockMinimo),
-      unidad:         producto.unidad    ?? '',
-      imagen:         producto.imagen    ?? '',
-      imagenes:       producto.imagenes  ?? [],
-      categoriaId:    producto.categoriaId ?? '',
-      destacado:      producto.destacado  ?? false,
-      tieneVariantes: producto.tieneVariantes ?? false,
+      nombre:            producto.nombre,
+      descripcion:       producto.descripcion    ?? '',
+      codigoProducto:    producto.codigoProducto ?? '',
+      codigoBarras:      producto.codigoBarras   ?? '',
+      precio:            String(producto.precio),
+      precioAnterior:    producto.precioAnterior ? String(producto.precioAnterior) : '',
+      costo:             producto.costo          ? String(producto.costo)          : '',
+      descuentoEfectivo: String(producto.descuentoEfectivo ?? 10),  // ← NUEVO
+      stock:             String(producto.stock),
+      stockMinimo:       String(producto.stockMinimo),
+      unidad:            producto.unidad    ?? '',
+      imagen:            producto.imagen    ?? '',
+      imagenes:          producto.imagenes  ?? [],
+      categoriaId:       producto.categoriaId ?? '',
+      destacado:         producto.destacado  ?? false,
+      tieneVariantes:    producto.tieneVariantes ?? false,
     });
     setVariantes([]);
     setErrorModal('');
@@ -126,12 +129,13 @@ export default function AdminProductosPage() {
 
     const payload = {
       ...form,
-      precio:         parseFloat(form.precio),
-      precioAnterior: form.precioAnterior ? parseFloat(form.precioAnterior) : null,
-      costo:          form.costo ? parseFloat(form.costo) : null,
-      stock:          form.tieneVariantes ? 0 : parseInt(form.stock) || 0,
-      stockMinimo:    parseInt(form.stockMinimo) || 1,
-      variantes:      form.tieneVariantes ? variantes.map(v => ({
+      precio:            parseFloat(form.precio),
+      precioAnterior:    form.precioAnterior ? parseFloat(form.precioAnterior) : null,
+      costo:             form.costo ? parseFloat(form.costo) : null,
+      descuentoEfectivo: parseFloat(form.descuentoEfectivo) || 10,  // ← NUEVO
+      stock:             form.tieneVariantes ? 0 : parseInt(form.stock) || 0,
+      stockMinimo:       parseInt(form.stockMinimo) || 1,
+      variantes:         form.tieneVariantes ? variantes.map(v => ({
         id:     v.id,
         talle:  v.talle || null,
         color:  v.color.trim(),
@@ -417,43 +421,97 @@ export default function AdminProductosPage() {
 
               <hr style={{ border: 'none', borderTop: '1px solid #f0ede8' }} />
 
-              {/* Precios y stock */}
+              {/* ── Precios y stock ── */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#aaa', margin: 0 }}>Precios y stock</p>
+                <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#aaa', margin: 0 }}>
+                  Precios y stock
+                </p>
+
+                {/* Precio base (tarjeta) + precio anterior */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>
-                    <label style={labelStyle}>Precio de venta *</label>
+                    <label style={labelStyle}>Precio tarjeta / base *</label>
                     <div style={{ position: 'relative' }}>
                       <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#aaa', fontSize: 13 }}>$</span>
-                      <input type="number" value={form.precio} onChange={e => setForm(p => ({ ...p, precio: e.target.value }))}
-                        min="0" step="0.01" placeholder="0" style={{ ...inputStyle, paddingLeft: 22 }} />
+                      <input type="number" value={form.precio}
+                        onChange={e => setForm(p => ({ ...p, precio: e.target.value }))}
+                        min="0" step="0.01" placeholder="0"
+                        style={{ ...inputStyle, paddingLeft: 22 }} />
                     </div>
                   </div>
                   <div>
                     <label style={labelStyle}>Precio anterior (tachado)</label>
                     <div style={{ position: 'relative' }}>
                       <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#aaa', fontSize: 13 }}>$</span>
-                      <input type="number" value={form.precioAnterior} onChange={e => setForm(p => ({ ...p, precioAnterior: e.target.value }))}
-                        min="0" step="0.01" placeholder="0" style={{ ...inputStyle, paddingLeft: 22 }} />
+                      <input type="number" value={form.precioAnterior}
+                        onChange={e => setForm(p => ({ ...p, precioAnterior: e.target.value }))}
+                        min="0" step="0.01" placeholder="0"
+                        style={{ ...inputStyle, paddingLeft: 22 }} />
                     </div>
                   </div>
                 </div>
 
+                {/* Descuento efectivo/transferencia */}
+                <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: '14px 16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <div>
+                      <p style={{ fontSize: 12, fontWeight: 700, color: '#15803d', margin: '0 0 2px' }}>
+                        💵 Descuento efectivo / transferencia
+                      </p>
+                      <p style={{ fontSize: 11, color: '#888', margin: 0 }}>
+                        El cliente paga menos si elige estos métodos
+                      </p>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <input
+                        type="number"
+                        value={form.descuentoEfectivo}
+                        onChange={e => setForm(p => ({ ...p, descuentoEfectivo: e.target.value }))}
+                        min="0" max="100" step="1"
+                        style={{ width: 64, padding: '8px 10px', border: '1px solid #bbf7d0', borderRadius: 8, fontSize: 14, fontWeight: 700, outline: 'none', textAlign: 'center', color: '#15803d', background: '#fff' }}
+                      />
+                      <span style={{ fontSize: 14, fontWeight: 700, color: '#15803d' }}>%</span>
+                    </div>
+                  </div>
+
+                  {/* Preview de precios calculados */}
+                  {form.precio && parseFloat(form.precio) > 0 && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                      {[
+                        { label: '💳 Tarjeta / MP', precio: parseFloat(form.precio) },
+                        { label: '🏦 Transferencia', precio: Math.round(parseFloat(form.precio) * (1 - (parseFloat(form.descuentoEfectivo) || 10) / 100)) },
+                        { label: '💵 Efectivo',      precio: Math.round(parseFloat(form.precio) * (1 - (parseFloat(form.descuentoEfectivo) || 10) / 100)) },
+                      ].map(({ label, precio }) => (
+                        <div key={label} style={{ background: '#fff', borderRadius: 8, padding: '8px 10px', textAlign: 'center' }}>
+                          <p style={{ fontSize: 10, color: '#888', margin: '0 0 3px' }}>{label}</p>
+                          <p style={{ fontSize: 14, fontWeight: 800, color: '#111', margin: 0 }}>
+                            ${precio.toLocaleString('es-AR')}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Stock */}
                 {!form.tieneVariantes && (
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
                     <div>
                       <label style={labelStyle}>Stock</label>
-                      <input type="number" value={form.stock} onChange={e => setForm(p => ({ ...p, stock: e.target.value }))}
+                      <input type="number" value={form.stock}
+                        onChange={e => setForm(p => ({ ...p, stock: e.target.value }))}
                         min="0" style={inputStyle} />
                     </div>
                     <div>
                       <label style={labelStyle}>Stock mínimo</label>
-                      <input type="number" value={form.stockMinimo} onChange={e => setForm(p => ({ ...p, stockMinimo: e.target.value }))}
+                      <input type="number" value={form.stockMinimo}
+                        onChange={e => setForm(p => ({ ...p, stockMinimo: e.target.value }))}
                         min="0" style={inputStyle} />
                     </div>
                     <div>
                       <label style={labelStyle}>Unidad</label>
-                      <input value={form.unidad} onChange={e => setForm(p => ({ ...p, unidad: e.target.value }))}
+                      <input value={form.unidad}
+                        onChange={e => setForm(p => ({ ...p, unidad: e.target.value }))}
                         placeholder="u., kg..." style={inputStyle} />
                     </div>
                   </div>

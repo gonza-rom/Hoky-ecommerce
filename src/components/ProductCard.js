@@ -10,6 +10,10 @@ export default function ProductCard({ producto, onAddToCart }) {
   const images          = getImagenesValidas(producto);
   const imagenPrincipal = images[0] || null;
 
+  // Precio con descuento (efectivo / transferencia)
+  const descuento       = producto.descuentoEfectivo ?? 10;
+  const precioEfectivo  = Math.round(producto.precio * (1 - descuento / 100));
+
   // Colores únicos de variantes activas con stock
   const coloresUnicos = producto.variantes
     ? [...new Set(
@@ -73,7 +77,6 @@ export default function ProductCard({ producto, onAddToCart }) {
 
           {/* Hover overlay con talles disponibles */}
           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-colors flex flex-col items-center justify-end pb-3 gap-2 opacity-0 group-hover:opacity-100">
-            {/* Talles */}
             {tallesUnicos.length > 0 && (
               <div className="flex gap-1 flex-wrap justify-center px-2">
                 {tallesUnicos.map(talle => (
@@ -125,25 +128,42 @@ export default function ProductCard({ producto, onAddToCart }) {
           </div>
         )}
 
-        <div className="mt-auto flex items-center justify-between">
-          <div>
-            {producto.precioAnterior && producto.precioAnterior > producto.precio && (
-              <p style={{ fontSize: 11, color: '#aaa', textDecoration: 'line-through', margin: 0 }}>
-                ${producto.precioAnterior.toLocaleString('es-AR')}
-              </p>
-            )}
+        <div className="mt-auto">
+          {/* Precio tarjeta tachado + precio efectivo principal */}
+          <div className="flex items-baseline gap-1.5 mb-0.5">
             <p className="text-base font-bold text-hoky-black">
+              ${precioEfectivo.toLocaleString('es-AR')}
+            </p>
+            <p style={{ fontSize: 15, color: '#aaa', textDecoration: 'line-through' }}>
               ${producto.precio.toLocaleString('es-AR')}
             </p>
           </div>
-          <button
-            onClick={(e) => { e.preventDefault(); onAddToCart(producto, 1); }}
-            disabled={producto.stock === 0}
-            className="bg-hoky-black hover:bg-hoky-dark text-white p-2 rounded-none transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
-            title={producto.stock === 0 ? 'Sin stock' : 'Agregar al carrito'}
-          >
-            <ShoppingBag className="w-4 h-4" />
-          </button>
+
+          {/* Etiqueta método de pago */}
+          <p style={{ fontSize: 10, color: '#16a34a', fontWeight: 600, marginBottom: 6 }}>
+            💵 Ef. / transferencia · {descuento}% OFF
+          </p>
+
+          {/* Precio anterior (oferta) si existe */}
+          {producto.precioAnterior && producto.precioAnterior > producto.precio && (
+            <p style={{ fontSize: 10, color: '#aaa', textDecoration: 'line-through', marginBottom: 4 }}>
+              Antes: ${producto.precioAnterior.toLocaleString('es-AR')}
+            </p>
+          )}
+
+          <div className="flex items-center justify-between">
+            <p style={{ fontSize: 13, color: '#888' }}>
+              💳 Tarjeta: ${producto.precio.toLocaleString('es-AR')}
+            </p>
+            <button
+              onClick={(e) => { e.preventDefault(); onAddToCart(producto, 1); }}
+              disabled={producto.stock === 0}
+              className="bg-hoky-black hover:bg-hoky-dark text-white p-2 rounded-none transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+              title={producto.stock === 0 ? 'Sin stock' : 'Agregar al carrito'}
+            >
+              <ShoppingBag className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -179,7 +199,6 @@ function ColorDot({ color }) {
         background: hex ?? '#e5e5e5',
         border: hex === '#ffffff' || hex === null ? '1px solid #ddd' : '1px solid transparent',
         flexShrink: 0,
-        // Si no hay color mapeado, mostramos las iniciales
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontSize: 7, fontWeight: 700, color: '#888',
       }}

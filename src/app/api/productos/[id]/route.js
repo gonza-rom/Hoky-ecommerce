@@ -1,4 +1,6 @@
+// ══════════════════════════════════════════════════════════════
 // src/app/api/productos/[id]/route.js
+// ══════════════════════════════════════════════════════════════
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
