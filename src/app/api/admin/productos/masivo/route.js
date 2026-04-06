@@ -100,20 +100,3 @@ export async function PATCH(req) {
 export const dynamic = "force-dynamic";
 
 
-// ═══════════════════════════════════════════════════════════════
-// src/app/api/admin/productos/exportar/route.js
-// ═══════════════════════════════════════════════════════════════
-// import { NextResponse } from "next/server";
-// import { prisma }       from "@/lib/prisma";
-
-export async function GET_exportar() {
-  // Guardado aparte — ver archivo exportar/route.js
-}
-
-
-// ═══════════════════════════════════════════════════════════════
-// src/app/api/admin/productos/[id]/variantes/route.js
-// ═══════════════════════════════════════════════════════════════
-export async function GET_variantes(_req, { params }) {
-  // Guardado aparte — ver archivo [id]/variantes/route.js
-}

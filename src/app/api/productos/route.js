@@ -132,12 +132,3 @@ export async function GET(request) {
     return Response.json({ error: error.message }, { status: 500 });
   }
 }
-
-
-// ══════════════════════════════════════════════════════════════
-// src/app/api/productos/[id]/route.js
-// ══════════════════════════════════════════════════════════════
-
-export async function GET_byId(request, context) {
-  // Guardado en archivo separado — ver [id]/route.js
-}

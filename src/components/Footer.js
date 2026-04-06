@@ -1,8 +1,9 @@
 'use client';
+// src/components/Footer.js
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { MapPin, Phone, Mail, Instagram } from 'lucide-react';
+import { MapPin, Phone, Instagram } from 'lucide-react';
 
 export default function Footer() {
   return (
@@ -13,12 +14,7 @@ export default function Footer() {
           {/* Marca */}
           <div>
             <div className="relative w-24 h-10 mb-5 invert">
-              <Image
-                src="/logo.jpeg"
-                alt="Hoky Indumentaria"
-                fill
-                className="object-contain"
-              />
+              <Image src="/logo.jpeg" alt="Hoky Indumentaria" fill className="object-contain" />
             </div>
             <p className="text-sm leading-relaxed mb-5 text-gray-500">
               Indumentaria urbana pensada para la calle. Calidad que se nota, estilo que se vive.
@@ -41,10 +37,11 @@ export default function Footer() {
             </p>
             <ul className="space-y-2">
               {[
-                { href: '/', label: 'Inicio' },
-                { href: '/productos', label: 'Catálogo' },
-                { href: '/nosotros', label: 'Nosotros' },
-                { href: '/contacto', label: 'Contacto' },
+                { href: '/',         label: 'Inicio'            },
+                { href: '/productos', label: 'Catálogo'          },
+                { href: '/nosotros',  label: 'Nosotros'          },
+                { href: '/envios',    label: 'Envíos y cambios'  },
+                { href: '/contacto',  label: 'Contacto'          },
               ].map((link) => (
                 <li key={link.href}>
                   <Link
@@ -66,18 +63,18 @@ export default function Footer() {
             <ul className="space-y-3 text-sm text-gray-500">
               <li>
                 <a
-                  href="https://wa.me/5493834000000"
+                  href="https://wa.me/5493834644467"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 hover:text-white transition-colors"
                 >
                   <Phone className="w-4 h-4 flex-shrink-0" />
-                  WhatsApp
+                  +54 9 383 464-4467
                 </a>
               </li>
               <li className="flex items-start gap-2">
                 <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                Catamarca, Argentina
+                Esquiú 620, Catamarca
               </li>
             </ul>
           </div>
@@ -89,7 +86,13 @@ export default function Footer() {
         <div className="container mx-auto px-4 py-5">
           <div className="flex flex-col md:flex-row justify-between items-center gap-2 text-[11px] text-gray-600">
             <p>&copy; {new Date().getFullYear()} Hoky Indumentaria. Todos los derechos reservados.</p>
-            <p>Desarrollado por Gonzalo Romero · DevHub</p>
+            <div className="flex items-center gap-4">
+              <Link href="/envios" className="hover:text-gray-400 transition-colors">
+                Envíos y cambios
+              </Link>
+              <span>·</span>
+              <p>Desarrollado por Gonzalo Romero · DevHub</p>
+            </div>
           </div>
         </div>
       </div>

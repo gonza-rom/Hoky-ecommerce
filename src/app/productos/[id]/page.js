@@ -1,7 +1,7 @@
 'use client';
 // src/app/productos/[id]/page.js
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ShoppingBag, ArrowLeft, Package, Truck, Shield, Star, Plus, Minus, Share2 } from 'lucide-react';
@@ -19,7 +19,6 @@ const fadeIn = {
   visible: { opacity: 1, transition: { duration: 0.4 } },
 };
 
-// ── Mapa de colores ───────────────────────────────────────────
 const COLOR_MAP = {
   negro:    '#111111', black:    '#111111',
   blanco:   '#ffffff', white:    '#ffffff',
@@ -38,8 +37,8 @@ const COLOR_MAP = {
 };
 
 export default function ProductoDetallePage() {
-  const params  = useParams();
-  const router  = useRouter();
+  const params = useParams();
+  const router = useRouter();
 
   const [producto,              setProducto]              = useState(null);
   const [productosRelacionados, setProductosRelacionados] = useState([]);
@@ -47,17 +46,23 @@ export default function ProductoDetallePage() {
   const [error,                 setError]                 = useState(null);
   const [cantidad,              setCantidad]              = useState(1);
   const [agregado,              setAgregado]              = useState(false);
-
-  // Variantes
-  const [talleSeleccionado,  setTalleSeleccionado]  = useState('');
-  const [colorSeleccionado,  setColorSeleccionado]  = useState('');
-  const [errorVariante,      setErrorVariante]      = useState('');
+  const [talleSeleccionado,     setTalleSeleccionado]     = useState('');
+  const [colorSeleccionado,     setColorSeleccionado]     = useState('');
+  const [errorVariante,         setErrorVariante]         = useState('');
 
   const { addToCart } = useCart();
 
-  useEffect(() => { if (params.id) fetchProducto(); }, [params.id]);
+  const fetchRelacionados = useCallback(async (categoriaId, productoId) => {
+    try {
+      const res  = await fetch(`/api/productos?categoria=${categoriaId}&exclude=${productoId}&limit=4`);
+      const data = await res.json();
+      setProductosRelacionados(Array.isArray(data) ? data : data.productos ?? []);
+    } catch {}
+  }, []);
 
-  const fetchProducto = async () => {
+  // FIX: useCallback para que fetchProducto sea estable entre renders
+  const fetchProducto = useCallback(async () => {
+    if (!params.id) return;
     try {
       setLoading(true); setError(null);
       const res = await fetch(`/api/productos/${params.id}`);
@@ -67,27 +72,24 @@ export default function ProductoDetallePage() {
       fetchRelacionados(data.categoriaId, data.id);
     } catch { setError('error'); }
     finally  { setLoading(false); }
-  };
+  }, [params.id, fetchRelacionados]);
 
-  const fetchRelacionados = async (categoriaId, productoId) => {
-    try {
-      const res  = await fetch(`/api/productos?categoria=${categoriaId}&exclude=${productoId}&limit=4`);
-      const data = await res.json();
-      setProductosRelacionados(Array.isArray(data) ? data : data.productos ?? []);
-    } catch {}
-  };
+  useEffect(() => { fetchProducto(); }, [fetchProducto]);
 
-  // ── Lógica de variantes ───────────────────────────────────
-  const variantes = producto?.variantes ?? [];
-  const tieneVariantes = producto?.tieneVariantes && variantes.length > 0;
+  // FIX: memoizar el array de variantes para que los useMemo de abajo
+  // no recalculen en cada render cuando producto.variantes es la misma referencia
+  const variantes = useMemo(
+    () => producto?.variantes ?? [],
+    [producto]
+  );
 
-  // Talles disponibles (con stock en algún color)
+  const tieneVariantes = !!(producto?.tieneVariantes && variantes.length > 0);
+
   const tallesDisponibles = useMemo(() => {
     if (!tieneVariantes) return [];
     return [...new Set(variantes.filter(v => v.stock > 0).map(v => v.talle).filter(Boolean))];
   }, [variantes, tieneVariantes]);
 
-  // Colores disponibles según el talle seleccionado
   const coloresDisponibles = useMemo(() => {
     if (!tieneVariantes) return [];
     const base = talleSeleccionado
@@ -96,7 +98,6 @@ export default function ProductoDetallePage() {
     return [...new Set(base.map(v => v.color).filter(Boolean))];
   }, [variantes, tieneVariantes, talleSeleccionado]);
 
-  // Variante seleccionada
   const varianteSeleccionada = useMemo(() => {
     if (!tieneVariantes) return null;
     return variantes.find(v =>
@@ -105,15 +106,12 @@ export default function ProductoDetallePage() {
     ) ?? null;
   }, [variantes, tieneVariantes, talleSeleccionado, colorSeleccionado]);
 
-  // Stock efectivo
   const stockEfectivo = tieneVariantes
     ? (varianteSeleccionada?.stock ?? 0)
     : (producto?.stock ?? 0);
 
-  // Precio efectivo (variante puede tener precio propio)
   const precioEfectivo = varianteSeleccionada?.precio ?? producto?.precio ?? 0;
 
-  // Reset color cuando cambia talle
   const handleTalle = (talle) => {
     setTalleSeleccionado(prev => prev === talle ? '' : talle);
     setColorSeleccionado('');
@@ -125,10 +123,8 @@ export default function ProductoDetallePage() {
     setErrorVariante('');
   };
 
-  // ── Agregar al carrito ────────────────────────────────────
   const handleAgregarCarrito = () => {
     if (!producto) return;
-
     if (tieneVariantes) {
       if (tallesDisponibles.length > 0 && !talleSeleccionado) {
         setErrorVariante('Seleccioná un talle'); return;
@@ -140,14 +136,12 @@ export default function ProductoDetallePage() {
         setErrorVariante('Combinación sin stock'); return;
       }
     }
-
     const item = {
       ...producto,
       precio:     precioEfectivo,
       varianteId: varianteSeleccionada?.id ?? null,
-      talle:      talleSeleccionado  || null,
-      color:      colorSeleccionado  || null,
-      // clave única para el carrito cuando hay variantes
+      talle:      talleSeleccionado || null,
+      color:      colorSeleccionado || null,
       id: varianteSeleccionada ? `${producto.id}-${varianteSeleccionada.id}` : producto.id,
     };
     addToCart(item, cantidad);
@@ -172,7 +166,6 @@ export default function ProductoDetallePage() {
     else { try { await navigator.clipboard.writeText(url); alert('¡Enlace copiado!'); } catch {} }
   };
 
-  // ── Loading / Error ───────────────────────────────────────
   if (loading) return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
       <div className="text-center">
@@ -205,7 +198,6 @@ export default function ProductoDetallePage() {
   return (
     <div className="min-h-screen bg-gray-50">
 
-      {/* Breadcrumb */}
       <motion.div className="bg-white border-b" initial="hidden" animate="visible" variants={fadeIn}>
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center gap-2 text-sm flex-wrap">
@@ -231,10 +223,8 @@ export default function ProductoDetallePage() {
           <ArrowLeft className="w-4 h-4" /> Volver
         </motion.button>
 
-        {/* ── Grid principal ── */}
         <div className="grid lg:grid-cols-2 gap-8 mb-12">
 
-          {/* Galería */}
           <motion.div initial="hidden" animate="visible" variants={fadeUp} custom={0}>
             <ProductGallery producto={producto} />
             <button onClick={handleCompartir}
@@ -243,11 +233,9 @@ export default function ProductoDetallePage() {
             </button>
           </motion.div>
 
-          {/* Info */}
           <motion.div initial="hidden" animate="visible" variants={fadeUp} custom={1}>
             <div className="bg-white rounded-lg shadow-md p-6 md:p-8 lg:sticky lg:top-24">
 
-              {/* Categoría */}
               {producto.categoria && (
                 <Link href={`/productos?categoria=${producto.categoriaId}`}
                   className="inline-block text-xs text-gray-400 font-semibold mb-2 hover:text-hoky-black tracking-widest uppercase">
@@ -255,12 +243,10 @@ export default function ProductoDetallePage() {
                 </Link>
               )}
 
-              {/* Nombre */}
               <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3 leading-tight tracking-tight uppercase">
                 {producto.nombre}
               </h1>
 
-              {/* Precio */}
               <div className="mb-5 pb-5 border-b flex items-baseline gap-3">
                 <span className="text-3xl md:text-4xl font-bold text-hoky-black">
                   ${precioEfectivo.toLocaleString('es-AR')}
@@ -272,14 +258,12 @@ export default function ProductoDetallePage() {
                 )}
               </div>
 
-              {/* Descripción */}
               {producto.descripcion && (
                 <p className="text-gray-600 text-sm leading-relaxed mb-5 pb-5 border-b">
                   {producto.descripcion}
                 </p>
               )}
 
-              {/* ── Selector de TALLES ── */}
               {tallesDisponibles.length > 0 && (
                 <div className="mb-5">
                   <p className="text-xs font-700 tracking-widest uppercase text-gray-500 mb-2 font-semibold">
@@ -294,10 +278,8 @@ export default function ProductoDetallePage() {
                           border:      activo ? '2px solid #111' : '1px solid #e0dbd5',
                           background:  activo ? '#111' : '#fff',
                           color:       activo ? '#fff' : '#555',
-                          fontSize: 12, fontWeight: 700,
-                          letterSpacing: '0.06em',
-                          cursor: 'pointer', transition: 'all 0.15s',
-                          borderRadius: 4,
+                          fontSize: 12, fontWeight: 700, letterSpacing: '0.06em',
+                          cursor: 'pointer', transition: 'all 0.15s', borderRadius: 4,
                         }}>
                           {talle}
                         </button>
@@ -307,7 +289,6 @@ export default function ProductoDetallePage() {
                 </div>
               )}
 
-              {/* ── Selector de COLORES ── */}
               {coloresDisponibles.length > 0 && (
                 <div className="mb-5">
                   <p className="text-xs font-semibold tracking-widest uppercase text-gray-500 mb-2">
@@ -321,9 +302,7 @@ export default function ProductoDetallePage() {
                         <button key={color} onClick={() => handleColor(color)} title={color} style={{
                           width: 28, height: 28, borderRadius: '50%',
                           background:  hex ?? '#e5e5e5',
-                          border:      activo
-                            ? '3px solid #111'
-                            : hex === '#ffffff' ? '1px solid #ddd' : '2px solid transparent',
+                          border:      activo ? '3px solid #111' : hex === '#ffffff' ? '1px solid #ddd' : '2px solid transparent',
                           cursor: 'pointer',
                           outline: activo ? '2px solid white' : 'none',
                           outlineOffset: '-4px',
@@ -339,12 +318,10 @@ export default function ProductoDetallePage() {
                 </div>
               )}
 
-              {/* Error variante */}
               {errorVariante && (
                 <p style={{ fontSize: 12, color: '#ef4444', marginBottom: 12 }}>{errorVariante}</p>
               )}
 
-              {/* Stock */}
               <div className="mb-5 flex items-center gap-2">
                 <Package className="w-4 h-4 text-gray-400 flex-shrink-0" />
                 <span className={`text-sm font-medium ${stockEfectivo > 0 ? 'text-green-700' : 'text-red-500'}`}>
@@ -357,19 +334,16 @@ export default function ProductoDetallePage() {
                 </span>
               </div>
 
-              {/* Cantidad */}
               {stockEfectivo > 0 && (
                 <div className="mb-5">
                   <p className="text-xs font-semibold tracking-widest uppercase text-gray-500 mb-2">Cantidad</p>
                   <div className="flex items-center gap-4">
                     <div className="flex items-center border border-gray-200 rounded-lg">
-                      <button onClick={() => setCantidad(Math.max(1, cantidad - 1))}
-                        className="p-2.5 hover:bg-gray-50 transition-colors">
+                      <button onClick={() => setCantidad(Math.max(1, cantidad - 1))} className="p-2.5 hover:bg-gray-50 transition-colors">
                         <Minus className="w-4 h-4" />
                       </button>
                       <span className="w-12 text-center font-bold text-sm">{cantidad}</span>
-                      <button onClick={() => setCantidad(Math.min(stockEfectivo, cantidad + 1))}
-                        className="p-2.5 hover:bg-gray-50 transition-colors">
+                      <button onClick={() => setCantidad(Math.min(stockEfectivo, cantidad + 1))} className="p-2.5 hover:bg-gray-50 transition-colors">
                         <Plus className="w-4 h-4" />
                       </button>
                     </div>
@@ -380,7 +354,6 @@ export default function ProductoDetallePage() {
                 </div>
               )}
 
-              {/* Botones */}
               <div className="space-y-2">
                 {stockEfectivo > 0 ? (
                   <>
@@ -410,7 +383,6 @@ export default function ProductoDetallePage() {
                 )}
               </div>
 
-              {/* Garantías */}
               <div className="mt-6 pt-5 border-t space-y-2">
                 {[
                   { icon: Shield, text: 'Productos de calidad garantizada' },
@@ -427,7 +399,6 @@ export default function ProductoDetallePage() {
           </motion.div>
         </div>
 
-        {/* Productos relacionados */}
         {productosRelacionados.length > 0 && (
           <motion.section initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-80px' }} variants={fadeIn}>
             <div className="flex items-center justify-between mb-6">

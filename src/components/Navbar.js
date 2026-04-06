@@ -3,24 +3,23 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { ShoppingCart, Menu, X, User, LogOut, LayoutDashboard, ChevronDown } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useCart } from '@/context/CartContext';
 import { createClient } from '@/lib/supabase/client';
 import Cart from './Cart';
 
-// Email del admin — el único que ve el link al panel
 const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? 'hokyindumentaria@gmail.com';
 
 export default function Navbar() {
-  const [menuAbierto,    setMenuAbierto]    = useState(false);
+  const [menuAbierto,     setMenuAbierto]     = useState(false);
   const [userMenuAbierto, setUserMenuAbierto] = useState(false);
-  const [user,           setUser]           = useState(null);
-  const [loadingUser,    setLoadingUser]    = useState(true);
+  const [user,            setUser]            = useState(null);
+  const [loadingUser,     setLoadingUser]     = useState(true);
 
   const { toggleCart, getItemCount } = useCart();
-  const itemCount = getItemCount();
+  const itemCount   = getItemCount();
   const userMenuRef = useRef(null);
-  const supabase    = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const links = [
     { href: '/productos', label: 'Catálogo'  },
@@ -28,7 +27,6 @@ export default function Navbar() {
     { href: '/contacto',  label: 'Contacto'  },
   ];
 
-  // ── Cargar usuario ────────────────────────────────────────
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       setUser(user);
@@ -40,9 +38,8 @@ export default function Navbar() {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [supabase]); // supabase es estable gracias a useMemo
 
-  // Cerrar menú usuario al clickear afuera
   useEffect(() => {
     function handleClick(e) {
       if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
@@ -64,7 +61,6 @@ export default function Navbar() {
 
   return (
     <>
-      {/* Banner ticker */}
       <div className="bg-hoky-black text-white overflow-hidden py-2">
         <div className="flex animate-scroll whitespace-nowrap">
           {[...Array(6)].map((_, i) => (
@@ -79,7 +75,6 @@ export default function Navbar() {
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16 md:h-20">
 
-            {/* Links desktop — izquierda */}
             <div className="hidden lg:flex items-center gap-8">
               {links.map((link) => (
                 <Link key={link.href} href={link.href}
@@ -89,20 +84,16 @@ export default function Navbar() {
               ))}
             </div>
 
-            {/* Logo — centro */}
             <Link href="/" className="absolute left-1/2 -translate-x-1/2">
               <div className="relative h-10 w-28 md:h-12 md:w-32">
                 <Image src="/logo.jpeg" alt="Hoky Indumentaria" fill className="object-contain" priority />
               </div>
             </Link>
 
-            {/* Íconos — derecha */}
             <div className="flex items-center gap-1 ml-auto">
 
-              {/* ── Usuario ── */}
               {!loadingUser && (
                 user ? (
-                  /* Logueado → menú desplegable */
                   <div ref={userMenuRef} style={{ position: 'relative' }}>
                     <button
                       onClick={() => setUserMenuAbierto(!userMenuAbierto)}
@@ -118,7 +109,6 @@ export default function Navbar() {
                       <ChevronDown size={12} className="hidden md:block text-gray-400" />
                     </button>
 
-                    {/* Dropdown */}
                     {userMenuAbierto && (
                       <div style={{
                         position: 'absolute', right: 0, top: 'calc(100% + 8px)',
@@ -126,7 +116,6 @@ export default function Navbar() {
                         borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
                         minWidth: 200, zIndex: 100, overflow: 'hidden',
                       }}>
-                        {/* Header usuario */}
                         <div style={{ padding: '12px 16px', borderBottom: '1px solid #f0ede8' }}>
                           <p style={{ fontSize: 13, fontWeight: 700, color: '#111', margin: '0 0 2px', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {nombre}
@@ -136,14 +125,10 @@ export default function Navbar() {
                           </p>
                         </div>
 
-                        {/* Links */}
                         <div style={{ padding: '6px 0' }}>
-                          <Link href="/cuenta" onClick={() => setUserMenuAbierto(false)}
-                            style={itemMenuStyle}>
+                          <Link href="/cuenta" onClick={() => setUserMenuAbierto(false)} style={itemMenuStyle}>
                             <User size={14} /> Mi cuenta
                           </Link>
-
-                          {/* Solo visible para el admin */}
                           {esAdmin && (
                             <Link href="/admin" onClick={() => setUserMenuAbierto(false)}
                               style={{ ...itemMenuStyle, color: '#111', fontWeight: 700 }}>
@@ -152,7 +137,6 @@ export default function Navbar() {
                           )}
                         </div>
 
-                        {/* Cerrar sesión */}
                         <div style={{ padding: '6px 0', borderTop: '1px solid #f0ede8' }}>
                           <button onClick={handleLogout} style={{ ...itemMenuStyle, width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444' }}>
                             <LogOut size={14} /> Cerrar sesión
@@ -162,7 +146,6 @@ export default function Navbar() {
                     )}
                   </div>
                 ) : (
-                  /* No logueado → botón iniciar sesión */
                   <Link href="/auth/login"
                     className="hidden md:flex items-center gap-1.5 text-xs font-semibold tracking-[0.08em] uppercase text-gray-600 hover:text-hoky-black transition-colors p-2">
                     <User size={16} />
@@ -171,7 +154,6 @@ export default function Navbar() {
                 )
               )}
 
-              {/* Carrito */}
               <button onClick={toggleCart}
                 className="relative p-2 text-hoky-black hover:opacity-60 transition-opacity"
                 aria-label="Abrir carrito">
@@ -183,7 +165,6 @@ export default function Navbar() {
                 )}
               </button>
 
-              {/* Burger móvil */}
               <button onClick={() => setMenuAbierto(!menuAbierto)}
                 className="lg:hidden p-2 text-hoky-black hover:opacity-60 transition-opacity"
                 aria-label="Menú">
@@ -193,7 +174,6 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* Mobile menu */}
         {menuAbierto && (
           <div className="lg:hidden border-t border-gray-100 bg-white">
             <div className="container mx-auto px-4 py-4 space-y-1">
@@ -204,8 +184,6 @@ export default function Navbar() {
                   {link.label}
                 </Link>
               ))}
-
-              {/* Auth en móvil */}
               <div className="pt-2">
                 {user ? (
                   <>

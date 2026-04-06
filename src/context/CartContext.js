@@ -12,7 +12,11 @@ export function CartProvider({ children }) {
   useEffect(() => {
     const savedCart = localStorage.getItem('hoky-cart');
     if (savedCart) {
-      setCart(JSON.parse(savedCart));
+      try {
+        setCart(JSON.parse(savedCart));
+      } catch {
+        localStorage.removeItem('hoky-cart');
+      }
     }
   }, []);
 
@@ -26,9 +30,8 @@ export function CartProvider({ children }) {
 
   const addToCart = (producto, cantidad = 1) => {
     const existente = cart.find(item => item.id === producto.id);
-    
+
     if (existente) {
-      // Actualizar cantidad
       setCart(prevCart =>
         prevCart.map(item =>
           item.id === producto.id
@@ -36,38 +39,30 @@ export function CartProvider({ children }) {
             : item
         )
       );
-      
-      // Toast DESPUÉS de actualizar estado
       showToast.success(`🛒 Se actualizó la cantidad de ${producto.nombre}`, {
-        position: 'top-center', // Abajo a la derecha para no molestar
+        position: 'top-center',
         duration: 2000,
       });
     } else {
-      // Agregar nuevo producto
       setCart(prevCart => [...prevCart, { ...producto, cantidad }]);
-      
-      // Toast DESPUÉS de actualizar estado
       showToast.success(`✅ ${producto.nombre} agregado al carrito`, {
-        position: 'top-center', // Abajo a la derecha
+        position: 'top-center',
         duration: 2000,
       });
     }
-    
-    // Abrir el carrito brevemente
+
     setIsOpen(true);
     setTimeout(() => setIsOpen(false), 2000);
   };
 
   const removeFromCart = (productoId) => {
     const producto = cart.find(item => item.id === productoId);
-    
     if (producto) {
       showToast.info(`🗑️ ${producto.nombre} eliminado del carrito`, {
         position: 'top-center',
         duration: 2000,
       });
     }
-    
     setCart(prevCart => prevCart.filter(item => item.id !== productoId));
   };
 
@@ -76,21 +71,11 @@ export function CartProvider({ children }) {
       removeFromCart(productoId);
       return;
     }
-    
     setCart(prevCart =>
       prevCart.map(item =>
         item.id === productoId ? { ...item, cantidad } : item
       )
     );
-    
-    // Toast solo cuando se cambia manualmente (no mostrar para cada click)
-    // const producto = cart.find(item => item.id === productoId);
-    // if (producto) {
-    //   showToast.info(`🔄 Cantidad actualizada: ${producto.nombre}`, {
-    //     position: 'bottom-right',
-    //     duration: 1500,
-    //   });
-    // }
   };
 
   const clearCart = () => {
@@ -100,22 +85,17 @@ export function CartProvider({ children }) {
         duration: 2000,
       });
     }
-    
     setCart([]);
     localStorage.removeItem('hoky-cart');
   };
 
-  const getTotal = () => {
-    return cart.reduce((total, item) => total + (item.precio * item.cantidad), 0);
-  };
+  const getTotal = () =>
+    cart.reduce((total, item) => total + item.precio * item.cantidad, 0);
 
-  const getItemCount = () => {
-    return cart.reduce((count, item) => count + item.cantidad, 0);
-  };
+  const getItemCount = () =>
+    cart.reduce((count, item) => count + item.cantidad, 0);
 
-  const toggleCart = () => {
-    setIsOpen(!isOpen);
-  };
+  const toggleCart = () => setIsOpen(prev => !prev);
 
   return (
     <CartContext.Provider
@@ -139,8 +119,6 @@ export function CartProvider({ children }) {
 
 export function useCart() {
   const context = useContext(CartContext);
-  if (!context) {
-    throw new Error('useCart debe usarse dentro de CartProvider');
-  }
+  if (!context) throw new Error('useCart debe usarse dentro de CartProvider');
   return context;
 }

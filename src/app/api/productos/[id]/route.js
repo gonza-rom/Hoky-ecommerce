@@ -1,6 +1,4 @@
-// ══════════════════════════════════════════════════════════════
 // src/app/api/productos/[id]/route.js
-// ══════════════════════════════════════════════════════════════
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -58,17 +56,4 @@ export async function GET(request, context) {
     console.error("[GET /api/productos/:id]", error);
     return Response.json({ error: error.message }, { status: 500 });
   }
-}
-
-
-// ══════════════════════════════════════════════════════════════
-// src/app/api/categorias/route.js
-// ══════════════════════════════════════════════════════════════
-
-import { prisma as prismaClient } from "@/lib/prisma";
-
-export const revalidate = 60;
-
-export async function GET_categorias() {
-  // Guardado en archivo separado — ver categorias/route.js
 }
