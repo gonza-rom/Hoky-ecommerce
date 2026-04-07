@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ShoppingBag } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import ProductCard from '@/components/ProductCard';
+import Image from 'next/image';
 
 const BANNERS = [
   {
@@ -254,17 +255,59 @@ export default function Home() {
         <div
           className="hk-hero-img"
           style={{
-            background: b.imgBg, alignItems: 'center',
-            justifyContent: 'center', position: 'relative', overflow: 'hidden',
+            background: b.imgBg,
+            alignItems: 'center',
+            justifyContent: 'center',
+            position: 'relative',
+            overflow: 'hidden',
             transition: 'background 0.5s ease',
           }}
         >
-          <span style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 90, opacity: 0.12, color: '#555', userSelect: 'none' }}>
+          {/* Watermark text */}
+          <span
+            style={{
+              fontFamily: "'Bebas Neue', sans-serif",
+              fontSize: 90,
+              opacity: 0.12,
+              color: '#555',
+              userSelect: 'none',
+            }}
+          >
             HOKY
           </span>
-          <div style={{ position: 'absolute', bottom: 18, right: 18, background: 'rgba(255,255,255,0.92)', padding: '9px 16px' }}>
-            <div style={{ fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#111', fontWeight: 700 }}>Nueva temporada</div>
-            <div style={{ fontSize: 13, color: '#666', marginTop: 2 }}>Otoño · Invierno</div>
+
+          {/* Hero image */}
+          <Image
+            src="/hoky.jpg"
+            alt="Hoky hero"
+            fill
+            style={{ objectFit: 'cover' }}
+          />
+
+          {/* Badge */}
+          <div
+            style={{
+              position: 'absolute',
+              bottom: 18,
+              right: 18,
+              background: 'rgba(255,255,255,0.92)',
+              padding: '9px 16px',
+            }}
+          >
+            <div
+              style={{
+                fontSize: 10,
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                color: '#111',
+                fontWeight: 700,
+              }}
+            >
+              Nueva temporada
+            </div>
+            <div style={{ fontSize: 13, color: '#666', marginTop: 2 }}>
+              Otoño · Invierno
+            </div>
           </div>
         </div>
       </div>

@@ -36,6 +36,8 @@ const COLOR_MAP = {
   camel:    '#c8a26b',
 };
 
+const DESCUENTO_EFECTIVO = 10;
+
 export default function ProductoDetallePage() {
   const params = useParams();
   const router = useRouter();
@@ -75,7 +77,7 @@ export default function ProductoDetallePage() {
 
   useEffect(() => { fetchProducto(); }, [fetchProducto]);
 
-  const variantes = useMemo(() => producto?.variantes ?? [], [producto]);
+  const variantes      = useMemo(() => producto?.variantes ?? [], [producto]);
   const tieneVariantes = !!(producto?.tieneVariantes && variantes.length > 0);
 
   const tallesDisponibles = useMemo(() => {
@@ -99,10 +101,9 @@ export default function ProductoDetallePage() {
     ) ?? null;
   }, [variantes, tieneVariantes, talleSeleccionado, colorSeleccionado]);
 
-  const stockEfectivo  = tieneVariantes ? (varianteSeleccionada?.stock ?? 0) : (producto?.stock ?? 0);
-  const precioBase     = varianteSeleccionada?.precio ?? producto?.precio ?? 0;
-  const descuento      = producto?.descuentoEfectivo ?? 10;
-  const precioConDesc  = Math.round(precioBase * (1 - descuento / 100));
+  const stockEfectivo = tieneVariantes ? (varianteSeleccionada?.stock ?? 0) : (producto?.stock ?? 0);
+  const precioBase    = varianteSeleccionada?.precio ?? producto?.precio ?? 0;
+  const precioConDesc = Math.round(precioBase * (1 - DESCUENTO_EFECTIVO / 100));
 
   const handleTalle = (talle) => {
     setTalleSeleccionado(prev => prev === talle ? '' : talle);
@@ -233,50 +234,78 @@ export default function ProductoDetallePage() {
                 {producto.nombre}
               </h1>
 
-              {/* ── Bloque de precios ── */}
+              {/* ── Bloque de precios ─────────────────────────────── */}
               <div className="mb-5 pb-5 border-b">
 
-                {/* Precio anterior tachado (oferta) */}
                 {producto.precioAnterior && producto.precioAnterior > precioBase && (
-                  <p className="text-sm text-gray-400 line-through mb-1">
+                  <p style={{ fontSize: 13, color: '#aaa', textDecoration: 'line-through', margin: '0 0 8px' }}>
                     Antes: ${producto.precioAnterior.toLocaleString('es-AR')}
                   </p>
                 )}
 
-                {/* Grilla de métodos de pago */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 10 }}>
-                  {[
-                    { emoji: '💳', label: 'Tarjeta / MP', precio: precioBase,    highlight: false },
-                    { emoji: '🏦', label: 'Transferencia', precio: precioConDesc, highlight: true  },
-                    { emoji: '💵', label: 'Efectivo',      precio: precioConDesc, highlight: true  },
-                  ].map(({ emoji, label, precio, highlight }) => (
-                    <div key={label} style={{
-                      background:   highlight ? '#f0fdf4' : '#f9fafb',
-                      border:       `1px solid ${highlight ? '#bbf7d0' : '#e5e7eb'}`,
-                      borderRadius: 10,
-                      padding:      '10px 8px',
-                      textAlign:    'center',
-                    }}>
-                      <p style={{ fontSize: 11, color: highlight ? '#16a34a' : '#6b7280', margin: '0 0 4px', fontWeight: 600 }}>
-                        {emoji} {label}
-                      </p>
-                      <p style={{ fontSize: 18, fontWeight: 800, color: highlight ? '#15803d' : '#111', margin: 0 }}>
-                        ${precio.toLocaleString('es-AR')}
-                      </p>
-                      {highlight && (
-                        <p style={{ fontSize: 10, color: '#16a34a', margin: '3px 0 0', fontWeight: 600 }}>
-                          {descuento}% OFF
-                        </p>
-                      )}
-                    </div>
-                  ))}
+                {/* Tarjeta / MP */}
+                <div style={{
+                  background: '#f9fafb', border: '1px solid #e5e7eb',
+                  borderRadius: 12, padding: '14px 16px', marginBottom: 10,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: 12, color: '#6b7280', fontWeight: 600 }}>
+                      💳 Tarjeta / Mercado Pago
+                    </span>
+                    <span style={{ fontSize: 24, fontWeight: 900, color: '#111' }}>
+                      ${precioBase.toLocaleString('es-AR')}
+                    </span>
+                  </div>
                 </div>
 
-                {/* Subtotal si cantidad > 1 */}
+                {/* Efectivo / Transferencia */}
+                <div style={{
+                  background: '#f0fdf4', border: '1px solid #bbf7d0',
+                  borderRadius: 12, padding: '14px 16px', marginBottom: 10,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <span style={{ fontSize: 12, color: '#15803d', fontWeight: 600 }}>
+                      💵 Efectivo / 🏦 Transferencia
+                    </span>
+                    <span style={{ fontSize: 24, fontWeight: 900, color: '#15803d' }}>
+                      ${precioConDesc.toLocaleString('es-AR')}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: 11, color: '#16a34a' }}>
+                      Ahorrás ${(precioBase - precioConDesc).toLocaleString('es-AR')}
+                    </span>
+                    <span style={{
+                      fontSize: 11, fontWeight: 800, color: '#fff',
+                      background: '#16a34a', padding: '2px 8px', borderRadius: 20,
+                    }}>
+                      {DESCUENTO_EFECTIVO}% OFF
+                    </span>
+                  </div>
+                </div>
+
+                {/* 3 cuotas sin interés — solo en el local */}
+                <div style={{
+                  background: '#eff6ff', border: '1px solid #bfdbfe',
+                  borderRadius: 10, padding: '10px 14px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 16, flexShrink: 0 }}>🏪</span>
+                    <p style={{ fontSize: 12, color: '#1d4ed8', margin: 0, lineHeight: 1.4 }}>
+                      <strong>3 cuotas sin interés</strong><br />
+                      <span style={{ fontSize: 11, fontWeight: 400 }}>con tarjeta en el local</span>
+                    </p>
+                  </div>
+                  <span style={{ fontSize: 18, fontWeight: 900, color: '#1d4ed8', flexShrink: 0 }}>
+                    ${Math.round(precioBase / 3).toLocaleString('es-AR')}<span style={{ fontSize: 11, fontWeight: 400 }}>/mes</span>
+                  </span>
+                </div>
+
                 {cantidad > 1 && (
-                  <p className="text-sm text-gray-500 mt-2">
-                    Subtotal: <strong className="text-hoky-black">${(precioConDesc * cantidad).toLocaleString('es-AR')}</strong>
-                    <span className="text-xs text-gray-400 ml-1">(ef./transf.)</span>
+                  <p style={{ fontSize: 12, color: '#888', margin: '10px 0 0', textAlign: 'right' }}>
+                    Subtotal efectivo/transf.:{' '}
+                    <strong style={{ color: '#111' }}>${(precioConDesc * cantidad).toLocaleString('es-AR')}</strong>
                   </p>
                 )}
               </div>
@@ -298,9 +327,9 @@ export default function ProductoDetallePage() {
                       return (
                         <button key={talle} onClick={() => handleTalle(talle)} style={{
                           minWidth: 40, height: 36, padding: '0 10px',
-                          border:      activo ? '2px solid #111' : '1px solid #e0dbd5',
-                          background:  activo ? '#111' : '#fff',
-                          color:       activo ? '#fff' : '#555',
+                          border:     activo ? '2px solid #111' : '1px solid #e0dbd5',
+                          background: activo ? '#111' : '#fff',
+                          color:      activo ? '#fff' : '#555',
                           fontSize: 12, fontWeight: 700, letterSpacing: '0.06em',
                           cursor: 'pointer', transition: 'all 0.15s', borderRadius: 4,
                         }}>
@@ -324,12 +353,12 @@ export default function ProductoDetallePage() {
                       return (
                         <button key={color} onClick={() => handleColor(color)} title={color} style={{
                           width: 28, height: 28, borderRadius: '50%',
-                          background:  hex ?? '#e5e5e5',
-                          border:      activo ? '3px solid #111' : hex === '#ffffff' ? '1px solid #ddd' : '2px solid transparent',
-                          cursor: 'pointer',
-                          outline: activo ? '2px solid white' : 'none',
+                          background:    hex ?? '#e5e5e5',
+                          border:        activo ? '3px solid #111' : hex === '#ffffff' ? '1px solid #ddd' : '2px solid transparent',
+                          cursor:        'pointer',
+                          outline:       activo ? '2px solid white' : 'none',
                           outlineOffset: '-4px',
-                          transition: 'all 0.15s',
+                          transition:    'all 0.15s',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           fontSize: 8, fontWeight: 700, color: '#888',
                         }}>
@@ -360,16 +389,14 @@ export default function ProductoDetallePage() {
               {stockEfectivo > 0 && (
                 <div className="mb-5">
                   <p className="text-xs font-semibold tracking-widest uppercase text-gray-500 mb-2">Cantidad</p>
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center border border-gray-200 rounded-lg">
-                      <button onClick={() => setCantidad(Math.max(1, cantidad - 1))} className="p-2.5 hover:bg-gray-50 transition-colors">
-                        <Minus className="w-4 h-4" />
-                      </button>
-                      <span className="w-12 text-center font-bold text-sm">{cantidad}</span>
-                      <button onClick={() => setCantidad(Math.min(stockEfectivo, cantidad + 1))} className="p-2.5 hover:bg-gray-50 transition-colors">
-                        <Plus className="w-4 h-4" />
-                      </button>
-                    </div>
+                  <div className="flex items-center border border-gray-200 rounded-lg w-fit">
+                    <button onClick={() => setCantidad(Math.max(1, cantidad - 1))} className="p-2.5 hover:bg-gray-50 transition-colors">
+                      <Minus className="w-4 h-4" />
+                    </button>
+                    <span className="w-12 text-center font-bold text-sm">{cantidad}</span>
+                    <button onClick={() => setCantidad(Math.min(stockEfectivo, cantidad + 1))} className="p-2.5 hover:bg-gray-50 transition-colors">
+                      <Plus className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               )}
@@ -405,9 +432,9 @@ export default function ProductoDetallePage() {
 
               <div className="mt-6 pt-5 border-t space-y-2">
                 {[
-                  { icon: Shield, text: 'Productos de calidad garantizada' },
+                  { icon: Shield, text: 'Productos de calidad garantizada'        },
                   { icon: Truck,  text: 'Retiro en local — Esquiú 620, Catamarca' },
-                  { icon: Star,   text: 'Atención personalizada' },
+                  { icon: Star,   text: 'Atención personalizada'                  },
                 ].map(({ icon: Icon, text }) => (
                   <div key={text} className="flex items-center gap-3 text-xs text-gray-500">
                     <Icon className="w-4 h-4 text-gray-400 flex-shrink-0" />
@@ -415,6 +442,7 @@ export default function ProductoDetallePage() {
                   </div>
                 ))}
               </div>
+
             </div>
           </motion.div>
         </div>
