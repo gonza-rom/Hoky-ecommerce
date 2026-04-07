@@ -4,7 +4,8 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ShoppingBag, ArrowLeft, Package, Truck, Shield, Star, Plus, Minus, Share2 } from 'lucide-react';
+import { ShoppingBag, ArrowLeft, Package, Truck, Shield, Star, Plus, Minus, Share2,
+  CreditCard, Banknote, Building2, Store } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCart } from '@/context/CartContext';
 import ProductGallery from '@/components/ProductGallery';
@@ -249,8 +250,9 @@ export default function ProductoDetallePage() {
                   borderRadius: 12, padding: '14px 16px', marginBottom: 10,
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: 12, color: '#6b7280', fontWeight: 600 }}>
-                      💳 Tarjeta / Mercado Pago
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#6b7280', fontWeight: 600 }}>
+                      <CreditCard size={14} color="#6b7280" />
+                      Tarjeta / Mercado Pago
                     </span>
                     <span style={{ fontSize: 24, fontWeight: 900, color: '#111' }}>
                       ${precioBase.toLocaleString('es-AR')}
@@ -264,8 +266,11 @@ export default function ProductoDetallePage() {
                   borderRadius: 12, padding: '14px 16px', marginBottom: 10,
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <span style={{ fontSize: 12, color: '#15803d', fontWeight: 600 }}>
-                      💵 Efectivo / 🏦 Transferencia
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#15803d', fontWeight: 600 }}>
+                      <Banknote size={14} color="#15803d" />
+                      Efectivo /
+                      <Building2 size={14} color="#15803d" />
+                      Transferencia
                     </span>
                     <span style={{ fontSize: 24, fontWeight: 900, color: '#15803d' }}>
                       ${precioConDesc.toLocaleString('es-AR')}
@@ -291,14 +296,15 @@ export default function ProductoDetallePage() {
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 16, flexShrink: 0 }}>🏪</span>
+                    <Store size={16} color="#1d4ed8" style={{ flexShrink: 0 }} />
                     <p style={{ fontSize: 12, color: '#1d4ed8', margin: 0, lineHeight: 1.4 }}>
                       <strong>3 cuotas sin interés</strong><br />
                       <span style={{ fontSize: 11, fontWeight: 400 }}>con tarjeta en el local</span>
                     </p>
                   </div>
                   <span style={{ fontSize: 18, fontWeight: 900, color: '#1d4ed8', flexShrink: 0 }}>
-                    ${Math.round(precioBase / 3).toLocaleString('es-AR')}<span style={{ fontSize: 11, fontWeight: 400 }}>/mes</span>
+                    ${Math.round(precioBase / 3).toLocaleString('es-AR')}
+                    <span style={{ fontSize: 11, fontWeight: 400 }}>/mes</span>
                   </span>
                 </div>
 
