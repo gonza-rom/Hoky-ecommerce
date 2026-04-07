@@ -480,7 +480,7 @@ export default function ProductosPage() {
       <div className="bg-white border-b">
         <div className="container mx-auto px-4 py-8">
           <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Nuestros Productos</h1>
-          <p className="text-gray-600">Explora nuestro catálogo completo de marroquinería</p>
+          <p className="text-gray-600">Explora nuestro catálogo completo de hoky indumentaria</p>
         </div>
       </div>
 
