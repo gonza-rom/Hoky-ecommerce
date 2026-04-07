@@ -37,7 +37,7 @@ export default function NosotrosPage() {
           fontFamily: "'Bebas Neue', sans-serif",
           fontSize: 40, letterSpacing: '0.03em', margin: '0 0 28px', color: '#111',
         }}>
-          NACIDOS EN LA CALLEEEEEEEE
+          NACIDOS EN LA CALLE
         </h2>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
           {[
