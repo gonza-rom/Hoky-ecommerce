@@ -11,31 +11,27 @@ const TALLES    = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 const FORM_VACIO = {
   nombre: '', descripcion: '', codigoProducto: '', codigoBarras: '',
   precio: '', precioAnterior: '', costo: '',
-  descuentoEfectivo: '10',   // ← NUEVO
+  descuentoEfectivo: '10',
   stock: '0', stockMinimo: '1',
   unidad: '', imagen: '', imagenes: [], categoriaId: '',
   destacado: false, tieneVariantes: false,
 };
 
-// ── Helpers ───────────────────────────────────────────────────
 function formatPrecio(n) {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n);
 }
 
-// ── Componente principal ───────────────────────────────────────
 export default function AdminProductosPage() {
   const [productos,   setProductos]   = useState([]);
   const [categorias,  setCategorias]  = useState([]);
   const [pagination,  setPagination]  = useState(null);
   const [loading,     setLoading]     = useState(true);
 
-  // Filtros
   const [busqueda,    setBusqueda]    = useState('');
   const [categoriaId, setCategoriaId] = useState('');
   const [page,        setPage]        = useState(1);
 
-  // Modal producto
-  const [modal,       setModal]       = useState(null); // null | 'nuevo' | producto
+  const [modal,       setModal]       = useState(null);
   const [form,        setForm]        = useState(FORM_VACIO);
   const [variantes,   setVariantes]   = useState([]);
   const [precioPorVariante, setPrecioPorVariante] = useState(false);
@@ -43,7 +39,6 @@ export default function AdminProductosPage() {
   const [errorModal,  setErrorModal]  = useState('');
   const [confirmDel,  setConfirmDel]  = useState(null);
 
-  // ── Fetch ───────────────────────────────────────────────────
   const fetchProductos = useCallback(async () => {
     setLoading(true);
     try {
@@ -68,7 +63,6 @@ export default function AdminProductosPage() {
       .catch(() => {});
   }, []);
 
-  // ── Modal ───────────────────────────────────────────────────
   function abrirNuevo() {
     setForm(FORM_VACIO);
     setVariantes([]);
@@ -86,7 +80,7 @@ export default function AdminProductosPage() {
       precio:            String(producto.precio),
       precioAnterior:    producto.precioAnterior ? String(producto.precioAnterior) : '',
       costo:             producto.costo          ? String(producto.costo)          : '',
-      descuentoEfectivo: String(producto.descuentoEfectivo ?? 10),  // ← NUEVO
+      descuentoEfectivo: String(producto.descuentoEfectivo ?? 10),
       stock:             String(producto.stock),
       stockMinimo:       String(producto.stockMinimo),
       unidad:            producto.unidad    ?? '',
@@ -100,7 +94,6 @@ export default function AdminProductosPage() {
     setErrorModal('');
     setModal(producto);
 
-    // Cargar variantes si aplica
     if (producto.tieneVariantes) {
       try {
         const res  = await fetch(`/api/admin/productos/${producto.id}/variantes`);
@@ -132,7 +125,7 @@ export default function AdminProductosPage() {
       precio:            parseFloat(form.precio),
       precioAnterior:    form.precioAnterior ? parseFloat(form.precioAnterior) : null,
       costo:             form.costo ? parseFloat(form.costo) : null,
-      descuentoEfectivo: parseFloat(form.descuentoEfectivo) || 10,  // ← NUEVO
+      descuentoEfectivo: parseFloat(form.descuentoEfectivo) || 10,
       stock:             form.tieneVariantes ? 0 : parseInt(form.stock) || 0,
       stockMinimo:       parseInt(form.stockMinimo) || 1,
       variantes:         form.tieneVariantes ? variantes.map(v => ({
@@ -166,7 +159,6 @@ export default function AdminProductosPage() {
     } catch { alert('Error al eliminar'); }
   }
 
-  // ── Variantes ───────────────────────────────────────────────
   const agregarVariante = () =>
     setVariantes(prev => [...prev, { talle: 'M', color: '', stock: '0', precio: '', activo: true }]);
 
@@ -178,11 +170,205 @@ export default function AdminProductosPage() {
 
   const stockTotalVariantes = variantes.reduce((acc, v) => acc + (parseInt(v.stock) || 0), 0);
 
-  // ── Render ──────────────────────────────────────────────────
   return (
     <div>
+      <style>{`
+        @keyframes spin { from { transform: rotate(0) } to { transform: rotate(360deg) } }
+
+        .prod-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 24px;
+          gap: 12px;
+        }
+
+        .prod-filters {
+          background: #fff;
+          border: 1px solid #e8e5e0;
+          border-radius: 12px;
+          padding: 16px;
+          margin-bottom: 16px;
+          display: flex;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+
+        .prod-filters-search {
+          flex: 1;
+          min-width: 160px;
+        }
+
+        .prod-table-wrap {
+          background: #fff;
+          border: 1px solid #e8e5e0;
+          border-radius: 12px;
+          overflow: hidden;
+        }
+
+        .prod-table-scroll {
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        .prod-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 13px;
+          min-width: 520px;
+        }
+
+        /* Columnas opcionales que se ocultan en mobile */
+        .col-categoria { }
+        .col-precio    { }
+        .col-codigos   { }
+
+        .prod-modal-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 50;
+          overflow-y: auto;
+          display: flex;
+          align-items: flex-start;
+          justify-content: center;
+          padding: 24px 16px;
+          background: rgba(0,0,0,0.6);
+        }
+
+        .prod-modal {
+          background: #fff;
+          border-radius: 16px;
+          width: 100%;
+          max-width: 640px;
+          box-shadow: 0 24px 48px rgba(0,0,0,0.15);
+        }
+
+        .prod-modal-body {
+          padding: 24px;
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+          max-height: 70vh;
+          overflow-y: auto;
+        }
+
+        .grid-2col {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+        }
+
+        .grid-3col {
+          display: grid;
+          grid-template-columns: 1fr 1fr 1fr;
+          gap: 12px;
+        }
+
+        .precios-preview {
+          display: grid;
+          grid-template-columns: 1fr 1fr 1fr;
+          gap: 8px;
+        }
+
+        .variantes-grid {
+          display: grid;
+          gap: 8px;
+          align-items: center;
+        }
+
+        .variantes-grid-header {
+          display: grid;
+          gap: 8px;
+        }
+
+        .paginacion {
+          padding: 12px 16px;
+          border-top: 1px solid #f0ede8;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+
+        /* ── Mobile ──────────────────────────── */
+        @media (max-width: 600px) {
+          .prod-header {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+
+          .prod-header button {
+            width: 100%;
+            justify-content: center;
+          }
+
+          .prod-filters {
+            flex-direction: column;
+          }
+
+          .prod-filters-search {
+            min-width: 0;
+          }
+
+          .col-categoria,
+          .col-precio {
+            display: none;
+          }
+
+          .prod-modal-overlay {
+            padding: 0;
+            align-items: flex-end;
+          }
+
+          .prod-modal {
+            border-radius: 16px 16px 0 0;
+            max-width: 100%;
+          }
+
+          .prod-modal-body {
+            max-height: 80vh;
+          }
+
+          .grid-2col {
+            grid-template-columns: 1fr;
+          }
+
+          .grid-3col {
+            grid-template-columns: 1fr 1fr;
+          }
+
+          .precios-preview {
+            grid-template-columns: 1fr;
+          }
+
+          .variantes-grid,
+          .variantes-grid-header {
+            grid-template-columns: 80px 1fr 60px 28px !important;
+          }
+
+          .variantes-grid.con-precio,
+          .variantes-grid-header.con-precio {
+            grid-template-columns: 70px 1fr 55px 80px 28px !important;
+          }
+        }
+
+        /* ── Tablet ──────────────────────────── */
+        @media (min-width: 601px) and (max-width: 860px) {
+          .col-categoria { display: none; }
+
+          .precios-preview {
+            grid-template-columns: 1fr 1fr;
+          }
+
+          .grid-3col {
+            grid-template-columns: 1fr 1fr;
+          }
+        }
+      `}</style>
+
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+      <div className="prod-header">
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 800, margin: '0 0 4px', letterSpacing: '-0.02em' }}>Productos</h1>
           <p style={{ fontSize: 13, color: '#888', margin: 0 }}>{pagination?.total ?? 0} productos en total</p>
@@ -197,8 +383,8 @@ export default function AdminProductosPage() {
       </div>
 
       {/* Filtros */}
-      <div style={{ background: '#fff', border: '1px solid #e8e5e0', borderRadius: 12, padding: 16, marginBottom: 16, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
+      <div className="prod-filters">
+        <div className="prod-filters-search" style={{ position: 'relative' }}>
           <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#aaa' }} />
           <input
             value={busqueda}
@@ -226,11 +412,10 @@ export default function AdminProductosPage() {
       </div>
 
       {/* Tabla */}
-      <div style={{ background: '#fff', border: '1px solid #e8e5e0', borderRadius: 12, overflow: 'hidden' }}>
+      <div className="prod-table-wrap">
         {loading ? (
           <div style={{ padding: 48, textAlign: 'center' }}>
             <Loader2 size={28} style={{ color: '#ccc', animation: 'spin 1s linear infinite' }} />
-            <style>{`@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}`}</style>
           </div>
         ) : productos.length === 0 ? (
           <div style={{ padding: 48, textAlign: 'center' }}>
@@ -238,100 +423,111 @@ export default function AdminProductosPage() {
             <p style={{ fontSize: 14, color: '#aaa', margin: 0 }}>No hay productos. Creá el primero.</p>
           </div>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid #f0ede8' }}>
-                {['Producto', 'Categoría', 'Precio', 'Stock', ''].map(h => (
-                  <th key={h} style={{
-                    padding: '12px 16px', textAlign: h === 'Precio' || h === 'Stock' ? 'right' : 'left',
-                    fontSize: 11, fontWeight: 600, letterSpacing: '0.08em',
-                    textTransform: 'uppercase', color: '#aaa',
-                  }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {productos.map((p, i) => {
-                const stockBajo = p.stock <= p.stockMinimo;
-                return (
-                  <tr key={p.id} style={{ borderBottom: i < productos.length - 1 ? '1px solid #f7f4f0' : 'none' }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#fafaf8'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                  >
-                    {/* Producto */}
-                    <td style={{ padding: '12px 16px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        {p.imagen ? (
-                          <img src={p.imagen.replace('/upload/', '/upload/f_auto,q_auto,w_80/')}
-                            alt={p.nombre} style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover', border: '1px solid #f0ede8' }} />
-                        ) : (
-                          <div style={{ width: 36, height: 36, borderRadius: 8, background: '#f5f4f2', border: '1px solid #e8e5e0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Package size={14} color="#ccc" />
+          <div className="prod-table-scroll">
+            <table className="prod-table">
+              <thead>
+                <tr style={{ borderBottom: '1px solid #f0ede8' }}>
+                  <th style={thStyle('left')}>Producto</th>
+                  <th className="col-categoria" style={thStyle('left')}>Categoría</th>
+                  <th className="col-precio" style={thStyle('right')}>Precio</th>
+                  <th style={thStyle('right')}>Stock</th>
+                  <th style={thStyle('right')}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {productos.map((p, i) => {
+                  const stockBajo = p.stock <= p.stockMinimo;
+                  return (
+                    <tr
+                      key={p.id}
+                      style={{ borderBottom: i < productos.length - 1 ? '1px solid #f7f4f0' : 'none' }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#fafaf8'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      {/* Producto */}
+                      <td style={{ padding: '12px 16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          {p.imagen ? (
+                            <img
+                              src={p.imagen.replace('/upload/', '/upload/f_auto,q_auto,w_80/')}
+                              alt={p.nombre}
+                              style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'cover', border: '1px solid #f0ede8', flexShrink: 0 }}
+                            />
+                          ) : (
+                            <div style={{ width: 36, height: 36, borderRadius: 8, background: '#f5f4f2', border: '1px solid #e8e5e0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                              <Package size={14} color="#ccc" />
+                            </div>
+                          )}
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                              <span style={{ fontWeight: 600, color: '#111', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 160 }}>{p.nombre}</span>
+                              {p.destacado && <Star size={11} color="#f59e0b" fill="#f59e0b" />}
+                            </div>
+                            {p.codigoProducto && <span style={{ fontSize: 11, color: '#aaa' }}>{p.codigoProducto}</span>}
+                            {/* Precio visible solo en mobile (cuando col-precio está oculta) */}
+                            <span className="precio-mobile" style={{ fontSize: 12, fontWeight: 600, color: '#111', display: 'none' }}>
+                              {formatPrecio(p.precio)}
+                            </span>
                           </div>
-                        )}
-                        <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ fontWeight: 600, color: '#111' }}>{p.nombre}</span>
-                            {p.destacado && <Star size={11} color="#f59e0b" fill="#f59e0b" />}
-                          </div>
-                          {p.codigoProducto && <span style={{ fontSize: 11, color: '#aaa' }}>{p.codigoProducto}</span>}
                         </div>
-                      </div>
-                    </td>
-                    {/* Categoría */}
-                    <td style={{ padding: '12px 16px', color: '#888' }}>
-                      {p.categoria?.nombre ?? <span style={{ color: '#ddd' }}>—</span>}
-                    </td>
-                    {/* Precio */}
-                    <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: '#111' }}>
-                      {formatPrecio(p.precio)}
-                    </td>
-                    {/* Stock */}
-                    <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                      <span style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 4,
-                        padding: '3px 8px', borderRadius: 6, fontSize: 12, fontWeight: 600,
-                        background: stockBajo ? '#fff5f5' : '#f0fdf4',
-                        color:      stockBajo ? '#ef4444' : '#16a34a',
-                        border:     `1px solid ${stockBajo ? '#fecaca' : '#bbf7d0'}`,
-                      }}>
-                        {stockBajo && <AlertTriangle size={10} />}
-                        {p.stock} u.
-                      </span>
-                    </td>
-                    {/* Acciones */}
-                    <td style={{ padding: '12px 16px' }}>
-                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                        <button onClick={() => abrirEditar(p)} style={{
-                          display: 'flex', alignItems: 'center', gap: 4, padding: '6px 10px',
-                          border: '1px solid #e0dbd5', borderRadius: 6, background: 'transparent',
-                          cursor: 'pointer', fontSize: 12, color: '#555',
+                      </td>
+                      {/* Categoría */}
+                      <td className="col-categoria" style={{ padding: '12px 16px', color: '#888' }}>
+                        {p.categoria?.nombre ?? <span style={{ color: '#ddd' }}>—</span>}
+                      </td>
+                      {/* Precio */}
+                      <td className="col-precio" style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: '#111' }}>
+                        {formatPrecio(p.precio)}
+                      </td>
+                      {/* Stock */}
+                      <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                        <span style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 4,
+                          padding: '3px 8px', borderRadius: 6, fontSize: 12, fontWeight: 600,
+                          background: stockBajo ? '#fff5f5' : '#f0fdf4',
+                          color:      stockBajo ? '#ef4444' : '#16a34a',
+                          border:     `1px solid ${stockBajo ? '#fecaca' : '#bbf7d0'}`,
+                          whiteSpace: 'nowrap',
                         }}>
-                          <Pencil size={11} /> Editar
-                        </button>
-                        <button onClick={() => setConfirmDel(p)} style={{
-                          display: 'flex', alignItems: 'center', gap: 4, padding: '6px 10px',
-                          border: '1px solid #fecaca', borderRadius: 6, background: 'transparent',
-                          cursor: 'pointer', fontSize: 12, color: '#ef4444',
-                        }}>
-                          <Trash2 size={11} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                          {stockBajo && <AlertTriangle size={10} />}
+                          {p.stock} u.
+                        </span>
+                      </td>
+                      {/* Acciones */}
+                      <td style={{ padding: '12px 16px' }}>
+                        <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                          <button onClick={() => abrirEditar(p)} style={{
+                            display: 'flex', alignItems: 'center', gap: 4, padding: '6px 10px',
+                            border: '1px solid #e0dbd5', borderRadius: 6, background: 'transparent',
+                            cursor: 'pointer', fontSize: 12, color: '#555', whiteSpace: 'nowrap',
+                          }}>
+                            <Pencil size={11} />
+                            <span className="btn-label-editar"> Editar</span>
+                          </button>
+                          <button onClick={() => setConfirmDel(p)} style={{
+                            display: 'flex', alignItems: 'center', gap: 4, padding: '6px 10px',
+                            border: '1px solid #fecaca', borderRadius: 6, background: 'transparent',
+                            cursor: 'pointer', fontSize: 12, color: '#ef4444',
+                          }}>
+                            <Trash2 size={11} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
 
         {/* Paginación */}
         {pagination && pagination.totalPages > 1 && (
-          <div style={{ padding: '12px 16px', borderTop: '1px solid #f0ede8', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div className="paginacion">
             <span style={{ fontSize: 12, color: '#888' }}>
               {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, pagination.total)} de {pagination.total}
             </span>
-            <div style={{ display: 'flex', gap: 6 }}>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {[...Array(pagination.totalPages)].map((_, i) => (
                 <button key={i} onClick={() => setPage(i + 1)} style={{
                   width: 32, height: 32, borderRadius: 6, border: '1px solid',
@@ -348,15 +544,11 @@ export default function AdminProductosPage() {
 
       {/* ── Modal producto ── */}
       {modal !== null && (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 50, overflowY: 'auto',
-          display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-          padding: '24px 16px', background: 'rgba(0,0,0,0.6)',
-        }} onClick={() => !guardando && setModal(null)}>
-          <div style={{
-            background: '#fff', borderRadius: 16, width: '100%', maxWidth: 640,
-            boxShadow: '0 24px 48px rgba(0,0,0,0.15)',
-          }} onClick={e => e.stopPropagation()}>
+        <div
+          className="prod-modal-overlay"
+          onClick={() => !guardando && setModal(null)}
+        >
+          <div className="prod-modal" onClick={e => e.stopPropagation()}>
 
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid #f0ede8' }}>
@@ -369,9 +561,8 @@ export default function AdminProductosPage() {
             </div>
 
             {/* Body */}
-            <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20, maxHeight: '70vh', overflowY: 'auto' }}>
+            <div className="prod-modal-body">
 
-              {/* Imágenes */}
               <MultipleImageUpload
                 value={form.imagenes}
                 onChange={(imagenes) => setForm(p => ({ ...p, imagenes, imagen: imagenes[0] ?? '' }))}
@@ -380,7 +571,7 @@ export default function AdminProductosPage() {
 
               <hr style={{ border: 'none', borderTop: '1px solid #f0ede8' }} />
 
-              {/* Nombre y descripción */}
+              {/* Información */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#aaa', margin: 0 }}>Información</p>
                 <div>
@@ -393,7 +584,7 @@ export default function AdminProductosPage() {
                   <textarea value={form.descripcion} onChange={e => setForm(p => ({ ...p, descripcion: e.target.value }))}
                     rows={2} placeholder="Descripción opcional..." style={{ ...inputStyle, resize: 'none' }} />
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="grid-2col">
                   <div>
                     <label style={labelStyle}>Código interno</label>
                     <input value={form.codigoProducto} onChange={e => setForm(p => ({ ...p, codigoProducto: e.target.value }))}
@@ -412,7 +603,6 @@ export default function AdminProductosPage() {
                     {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                   </select>
                 </div>
-                {/* Destacado */}
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: '#555' }}>
                   <input type="checkbox" checked={form.destacado} onChange={e => setForm(p => ({ ...p, destacado: e.target.checked }))} />
                   Producto destacado (aparece en la home)
@@ -421,14 +611,13 @@ export default function AdminProductosPage() {
 
               <hr style={{ border: 'none', borderTop: '1px solid #f0ede8' }} />
 
-              {/* ── Precios y stock ── */}
+              {/* Precios y stock */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#aaa', margin: 0 }}>
                   Precios y stock
                 </p>
 
-                {/* Precio base (tarjeta) + precio anterior */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="grid-2col">
                   <div>
                     <label style={labelStyle}>Precio tarjeta / base *</label>
                     <div style={{ position: 'relative' }}>
@@ -451,9 +640,9 @@ export default function AdminProductosPage() {
                   </div>
                 </div>
 
-                {/* Descuento efectivo/transferencia */}
+                {/* Descuento efectivo */}
                 <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: '14px 16px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 12, flexWrap: 'wrap' }}>
                     <div>
                       <p style={{ fontSize: 12, fontWeight: 700, color: '#15803d', margin: '0 0 2px' }}>
                         💵 Descuento efectivo / transferencia
@@ -474,9 +663,8 @@ export default function AdminProductosPage() {
                     </div>
                   </div>
 
-                  {/* Preview de precios calculados */}
                   {form.precio && parseFloat(form.precio) > 0 && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                    <div className="precios-preview">
                       {[
                         { label: '💳 Tarjeta / MP', precio: parseFloat(form.precio) },
                         { label: '🏦 Transferencia', precio: Math.round(parseFloat(form.precio) * (1 - (parseFloat(form.descuentoEfectivo) || 10) / 100)) },
@@ -495,7 +683,7 @@ export default function AdminProductosPage() {
 
                 {/* Stock */}
                 {!form.tieneVariantes && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                  <div className="grid-3col">
                     <div>
                       <label style={labelStyle}>Stock</label>
                       <input type="number" value={form.stock}
@@ -536,6 +724,7 @@ export default function AdminProductosPage() {
                       width: 44, height: 24, borderRadius: 12, border: 'none',
                       background: form.tieneVariantes ? '#111' : '#ddd',
                       cursor: 'pointer', position: 'relative', transition: 'background 0.2s',
+                      flexShrink: 0,
                     }}
                   >
                     <span style={{
@@ -554,14 +743,21 @@ export default function AdminProductosPage() {
                     </label>
 
                     {/* Encabezado variantes */}
-                    <div style={{ display: 'grid', gridTemplateColumns: precioPorVariante ? '90px 110px 70px 100px 32px' : '90px 110px 70px 32px', gap: 8 }}>
+                    <div
+                      className={`variantes-grid-header${precioPorVariante ? ' con-precio' : ''}`}
+                      style={{ gridTemplateColumns: precioPorVariante ? '90px 110px 70px 100px 32px' : '90px 110px 70px 32px' }}
+                    >
                       {['Talle', 'Color', 'Stock', ...(precioPorVariante ? ['Precio'] : []), ''].map(h => (
                         <span key={h} style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#aaa' }}>{h}</span>
                       ))}
                     </div>
 
                     {variantes.map((v, i) => (
-                      <div key={i} style={{ display: 'grid', gridTemplateColumns: precioPorVariante ? '90px 110px 70px 100px 32px' : '90px 110px 70px 32px', gap: 8, alignItems: 'center' }}>
+                      <div
+                        key={i}
+                        className={`variantes-grid${precioPorVariante ? ' con-precio' : ''}`}
+                        style={{ gridTemplateColumns: precioPorVariante ? '90px 110px 70px 100px 32px' : '90px 110px 70px 32px' }}
+                      >
                         <select value={v.talle} onChange={e => actualizarVariante(i, 'talle', e.target.value)} style={{ ...inputStyle, padding: '8px 8px' }}>
                           <option value="">Sin talle</option>
                           {TALLES.map(t => <option key={t} value={t}>{t}</option>)}
@@ -656,10 +852,20 @@ export default function AdminProductosPage() {
           </div>
         </div>
       )}
-
-      <style>{`@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}`}</style>
     </div>
   );
+}
+
+function thStyle(align) {
+  return {
+    padding: '12px 16px',
+    textAlign: align,
+    fontSize: 11,
+    fontWeight: 600,
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase',
+    color: '#aaa',
+  };
 }
 
 const labelStyle = { display: 'block', fontSize: 12, fontWeight: 600, color: '#555', marginBottom: 5 };
