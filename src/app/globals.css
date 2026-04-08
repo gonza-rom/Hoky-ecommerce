@@ -3,7 +3,6 @@
 @tailwind utilities;
 
 /* ── Fuente de marca ── */
-/* Si tenés el archivo de Afical Neue Extra Bold, colocalo en /public/fonts/ */
 @font-face {
   font-family: 'AficalNeueBold';
   src: url('/fonts/AficalNeue-ExtraBold.woff2') format('woff2'),
@@ -29,47 +28,95 @@
   --foreground: #f5f5f5;
 }
 
+/* ── Base ── */
+html {
+  /* Evita saltos de layout cuando aparece scrollbar */
+  scrollbar-gutter: stable;
+  /* Mejor legibilidad en móvil */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 body {
   font-family: 'Inter', Arial, Helvetica, sans-serif;
   background-color: var(--background);
   color: var(--foreground);
+  /* Previene overflow horizontal en móvil */
+  overflow-x: hidden;
 }
 
-/* Clase de tipografía de marca — usar en logos y títulos hero */
+/* ── Tipografía responsive ── */
+/* Escala fluida: chico en móvil, grande en desktop */
+h1 { font-size: clamp(1.5rem, 5vw, 2.5rem); }
+h2 { font-size: clamp(1.25rem, 4vw, 2rem);  }
+h3 { font-size: clamp(1rem, 3vw, 1.5rem);   }
+
+/* Clase de tipografía de marca */
 .font-brand {
   font-family: 'AficalNeueBold', 'Arial Black', sans-serif;
   font-weight: 800;
   letter-spacing: -0.01em;
 }
 
-/* Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: #f1f1f1;
-}
-::-webkit-scrollbar-thumb {
-  background: #111;
-  border-radius: 2px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #333;
+/* ── Imágenes responsive por defecto ── */
+img,
+video {
+  max-width: 100%;
+  height: auto;
+  display: block;
 }
 
-/* Transiciones suaves */
+/* ── Scrollbar ── */
+::-webkit-scrollbar       { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #f1f1f1; }
+::-webkit-scrollbar-thumb { background: #111; border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: #333; }
+
+/* Ocultar scrollbar en móvil para sliders horizontales */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+
+/* ── Transiciones suaves ── */
 * {
   transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+/* ── Touch: área mínima de 44px para botones táctiles ── */
+button,
+a,
+[role="button"] {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Excepción: íconos pequeños dentro de otros elementos no necesitan el mínimo */
+button svg,
+a svg {
+  min-height: unset;
+  min-width: unset;
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
+
+  /* Contenedor seguro con padding horizontal en móvil */
+  .safe-x {
+    padding-left:  max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+
+  /* Padding bottom seguro para dispositivos con notch inferior (iPhone) */
+  .safe-bottom {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
 }
 
-/* Carrito slide-in */
+/* ── Carrito slide-in ── */
 @keyframes slide-in {
   from { transform: translateX(100%); }
   to   { transform: translateX(0); }
@@ -78,16 +125,19 @@ body {
   animation: slide-in 0.3s ease-out;
 }
 
-/* Product Card Hover */
+/* ── Product Card Hover ── */
+/* Solo aplicar hover en dispositivos que lo soportan (no touch) */
+@media (hover: hover) {
+  .product-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+  }
+}
 .product-card {
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
-.product-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
-}
 
-/* Cart Badge bounce */
+/* ── Cart Badge bounce ── */
 .cart-badge {
   animation: bounce 0.5s;
 }
@@ -96,7 +146,7 @@ body {
   50%       { transform: scale(1.25); }
 }
 
-/* Ticker de banner */
+/* ── Ticker de banner ── */
 .animate-scroll {
   animation: scroll 18s linear infinite;
 }
@@ -104,14 +154,25 @@ body {
   0%   { transform: translateX(0); }
   100% { transform: translateX(-50%); }
 }
-.animate-scroll:hover {
-  animation-play-state: paused;
+
+/* Pausar solo en dispositivos con hover (no touch) */
+@media (hover: hover) {
+  .animate-scroll:hover {
+    animation-play-state: paused;
+  }
 }
 
-/* WhatsApp float */
+/* ── WhatsApp float ── */
 .whatsapp-float {
   position: fixed;
-  bottom: 20px;
+  bottom: max(20px, env(safe-area-inset-bottom));
   right: 20px;
   z-index: 100;
+}
+
+/* En móvil, subir el botón de WhatsApp si hay una barra de nav inferior */
+@media (max-width: 767px) {
+  .whatsapp-float {
+    bottom: max(80px, env(safe-area-inset-bottom));
+  }
 }
