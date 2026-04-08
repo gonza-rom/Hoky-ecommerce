@@ -1,8 +1,10 @@
 import { Inter } from 'next/font/google';
 import './globals.css';
-import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { CartProvider } from '@/context/CartContext';
+import ConditionalNavbar from '@/components/ConditionalNavbar';
+import ConditionalWhatsApp from '@/components/ConditionalWhatsApp';
+import ConditionalFooter from '@/components/ConditionalFooter';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -33,13 +35,14 @@ export default function RootLayout({ children }) {
       <head>
         <meta name="theme-color" content="#111111" />
       </head>
-      <body className={inter.className}>
+      <body className={inter.className} suppressHydrationWarning>
         <CartProvider>
-          <Navbar />
+          <ConditionalNavbar />
           <main className="min-h-screen">
             {children}
           </main>
-          <Footer />
+          <ConditionalFooter />
+          <ConditionalWhatsApp />
         </CartProvider>
       </body>
     </html>

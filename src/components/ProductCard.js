@@ -11,8 +11,20 @@ export default function ProductCard({ producto, onAddToCart }) {
   const imagenPrincipal = images[0] || null;
 
   // Precio con descuento (efectivo / transferencia)
-  const descuento       = producto.descuentoEfectivo ?? 10;
-  const precioEfectivo  = Math.round(producto.precio * (1 - descuento / 100));
+  const descuento      = producto.descuentoEfectivo ?? 20;
+  const precioEfectivo = Math.round(producto.precio * (1 - descuento / 100));
+
+  // Cuotas sin interés
+  const cuotas      = 3;
+  const precioCuota = Math.round(producto.precio / cuotas);
+
+  const formatPrecio = (valor) =>
+    new Intl.NumberFormat('es-AR', {
+      style: 'currency',
+      currency: 'ARS',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(valor);
 
   // Colores únicos de variantes activas con stock
   const coloresUnicos = producto.variantes
@@ -109,7 +121,7 @@ export default function ProductCard({ producto, onAddToCart }) {
         )}
 
         <Link href={`/productos/${producto.id}`}>
-          <h3 className="text-sm font-semibold text-hoky-black mb-2 line-clamp-2 leading-snug hover:opacity-60 transition-opacity tracking-wide uppercase">
+          <h3 className="text-sm font-bold text-hoky-black mb-2 line-clamp-2 leading-snug hover:opacity-60 transition-opacity tracking-wide uppercase">
             {producto.nombre}
           </h3>
         </Link>
@@ -128,42 +140,37 @@ export default function ProductCard({ producto, onAddToCart }) {
           </div>
         )}
 
-        <div className="mt-auto">
-          {/* Precio tarjeta tachado + precio efectivo principal */}
-          <div className="flex items-baseline gap-1.5 mb-0.5">
-            <p className="text-base font-bold text-hoky-black">
-              ${precioEfectivo.toLocaleString('es-AR')}
-            </p>
-            <p style={{ fontSize: 15, color: '#aaa', textDecoration: 'line-through' }}>
-              ${producto.precio.toLocaleString('es-AR')}
-            </p>
-          </div>
+        <div className="mt-auto flex flex-col gap-0.5">
+          {/* Precio tarjeta (precio base) */}
+          <p className="text-lg font-bold text-hoky-black leading-tight">
+            {formatPrecio(producto.precio)}
+          </p>
 
-          {/* Etiqueta método de pago */}
-          <p style={{ fontSize: 10, color: '#16a34a', fontWeight: 600, marginBottom: 6 }}>
-            💵 Ef. / transferencia · {descuento}% OFF
+          {/* Cuotas sin interés */}
+          <p className="text-[11px] text-gray-500">
+            {cuotas} x {formatPrecio(precioCuota)} sin interés
+          </p>
+
+          {/* Precio efectivo / transferencia */}
+          <p className="text-sm font-bold text-red-600">
+            {formatPrecio(precioEfectivo)} con Transferencia
           </p>
 
           {/* Precio anterior (oferta) si existe */}
           {producto.precioAnterior && producto.precioAnterior > producto.precio && (
-            <p style={{ fontSize: 10, color: '#aaa', textDecoration: 'line-through', marginBottom: 4 }}>
-              Antes: ${producto.precioAnterior.toLocaleString('es-AR')}
+            <p className="text-[10px] text-gray-400 line-through">
+              Antes: {formatPrecio(producto.precioAnterior)}
             </p>
           )}
 
-          <div className="flex items-center justify-between">
-            <p style={{ fontSize: 13, color: '#888' }}>
-              💳 Tarjeta: ${producto.precio.toLocaleString('es-AR')}
-            </p>
-            <button
-              onClick={(e) => { e.preventDefault(); onAddToCart(producto, 1); }}
-              disabled={producto.stock === 0}
-              className="bg-hoky-black hover:bg-hoky-dark text-white p-2 rounded-none transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
-              title={producto.stock === 0 ? 'Sin stock' : 'Agregar al carrito'}
-            >
-              <ShoppingBag className="w-4 h-4" />
-            </button>
-          </div>
+          {/* Botón agregar al carrito */}
+          <button
+            onClick={(e) => { e.preventDefault(); onAddToCart(producto, 1); }}
+            disabled={producto.stock === 0}
+            className="mt-2 w-full bg-black hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold py-2.5 rounded-full text-xs tracking-wide uppercase transition-colors"
+          >
+            {producto.stock === 0 ? 'Sin stock' : 'Comprar'}
+          </button>
         </div>
       </div>
     </div>
@@ -195,7 +202,7 @@ function ColorDot({ color }) {
     <div
       title={color}
       style={{
-        width:  14, height: 14, borderRadius: '50%',
+        width: 14, height: 14, borderRadius: '50%',
         background: hex ?? '#e5e5e5',
         border: hex === '#ffffff' || hex === null ? '1px solid #ddd' : '1px solid transparent',
         flexShrink: 0,

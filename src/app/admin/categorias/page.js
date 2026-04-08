@@ -5,13 +5,13 @@ import { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash2, X, Tag, Loader2 } from 'lucide-react';
 
 export default function AdminCategoriasPage() {
-  const [categorias,  setCategorias]  = useState([]);
-  const [loading,     setLoading]     = useState(true);
-  const [modal,       setModal]       = useState(null); // null | 'nuevo' | categoria
-  const [form,        setForm]        = useState({ nombre: '', descripcion: '', orden: 0 });
-  const [guardando,   setGuardando]   = useState(false);
-  const [error,       setError]       = useState('');
-  const [confirmDel,  setConfirmDel]  = useState(null);
+  const [categorias, setCategorias] = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [modal,      setModal]      = useState(null);
+  const [form,       setForm]       = useState({ nombre: '', descripcion: '', orden: 0 });
+  const [guardando,  setGuardando]  = useState(false);
+  const [error,      setError]      = useState('');
+  const [confirmDel, setConfirmDel] = useState(null);
 
   useEffect(() => { fetchCategorias(); }, []);
 
@@ -44,11 +44,7 @@ export default function AdminCategoriasPage() {
       const esEdicion = modal !== 'nuevo';
       const res = await fetch(
         esEdicion ? `/api/admin/categorias/${modal.id}` : '/api/admin/categorias',
-        {
-          method:  esEdicion ? 'PUT' : 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify(form),
-        }
+        { method: esEdicion ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) }
       );
       const data = await res.json();
       if (!data.ok) { setError(data.error ?? 'Error al guardar'); return; }
@@ -69,173 +65,134 @@ export default function AdminCategoriasPage() {
   return (
     <div>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
+      <div className="flex items-start justify-between gap-3 mb-6">
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 800, margin: '0 0 4px', letterSpacing: '-0.02em' }}>Categorías</h1>
-          <p style={{ fontSize: 13, color: '#888', margin: 0 }}>{categorias.length} categorías en total</p>
+          <h1 className="text-2xl font-extrabold tracking-tight mb-1">Categorías</h1>
+          <p className="text-sm text-gray-400">{categorias.length} categorías en total</p>
         </div>
-        <button onClick={abrirNuevo} style={{
-          display: 'flex', alignItems: 'center', gap: 8,
-          background: '#111', color: '#fff', border: 'none',
-          padding: '10px 18px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-          cursor: 'pointer',
-        }}>
-          <Plus size={15} /> Nueva categoría
+        <button onClick={abrirNuevo}
+          className="flex items-center gap-2 bg-[#111] text-white px-4 py-2.5 rounded-lg text-sm font-semibold flex-shrink-0 hover:bg-gray-800 transition-colors">
+          <Plus size={14} /> <span className="hidden sm:inline">Nueva categoría</span><span className="sm:hidden">Nueva</span>
         </button>
       </div>
 
       {/* Lista */}
-      <div style={{ background: '#fff', border: '1px solid #e8e5e0', borderRadius: 12, overflow: 'hidden' }}>
+      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
         {loading ? (
-          <div style={{ padding: 48, textAlign: 'center' }}>
-            <Loader2 size={28} style={{ color: '#ccc', animation: 'spin 1s linear infinite' }} />
-            <style>{`@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}`}</style>
+          <div className="p-12 text-center">
+            <Loader2 size={28} className="text-gray-300 animate-spin mx-auto" />
           </div>
         ) : categorias.length === 0 ? (
-          <div style={{ padding: 48, textAlign: 'center' }}>
-            <Tag size={40} color="#ddd" style={{ marginBottom: 12 }} />
-            <p style={{ fontSize: 14, color: '#aaa', margin: 0 }}>No hay categorías. Creá la primera.</p>
+          <div className="p-12 text-center">
+            <Tag size={40} className="text-gray-200 mx-auto mb-3" />
+            <p className="text-sm text-gray-400">No hay categorías. Creá la primera.</p>
           </div>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid #f0ede8' }}>
-                {['Nombre', 'Descripción', 'Productos', 'Orden', ''].map(h => (
-                  <th key={h} style={{
-                    padding: '12px 16px', textAlign: 'left',
-                    fontSize: 11, fontWeight: 600, letterSpacing: '0.08em',
-                    textTransform: 'uppercase', color: '#aaa',
-                  }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {categorias.map((cat, i) => (
-                <tr key={cat.id} style={{ borderBottom: i < categorias.length - 1 ? '1px solid #f7f4f0' : 'none' }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#fafaf8'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                >
-                  <td style={{ padding: '14px 16px', fontWeight: 600, color: '#111' }}>{cat.nombre}</td>
-                  <td style={{ padding: '14px 16px', color: '#888' }}>{cat.descripcion || '—'}</td>
-                  <td style={{ padding: '14px 16px', color: '#888' }}>{cat._count?.productos ?? 0} productos</td>
-                  <td style={{ padding: '14px 16px', color: '#888' }}>{cat.orden}</td>
-                  <td style={{ padding: '14px 16px' }}>
-                    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                      <button onClick={() => abrirEditar(cat)} style={{
-                        display: 'flex', alignItems: 'center', gap: 4,
-                        padding: '6px 10px', border: '1px solid #e0dbd5',
-                        borderRadius: 6, background: 'transparent', cursor: 'pointer',
-                        fontSize: 12, color: '#555',
-                      }}>
-                        <Pencil size={12} /> Editar
-                      </button>
-                      <button onClick={() => setConfirmDel(cat)} style={{
-                        display: 'flex', alignItems: 'center', gap: 4,
-                        padding: '6px 10px', border: '1px solid #fecaca',
-                        borderRadius: 6, background: 'transparent', cursor: 'pointer',
-                        fontSize: 12, color: '#ef4444',
-                      }}>
-                        <Trash2 size={12} /> Eliminar
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+          <>
+            {/* Tabla desktop */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="border-b border-gray-100">
+                    {['Nombre', 'Descripción', 'Productos', 'Orden', ''].map(h => (
+                      <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {categorias.map((cat, i) => (
+                    <tr key={cat.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors last:border-0">
+                      <td className="px-4 py-3 font-semibold text-[#111]">{cat.nombre}</td>
+                      <td className="px-4 py-3 text-gray-400 max-w-[200px] truncate">{cat.descripcion || '—'}</td>
+                      <td className="px-4 py-3 text-gray-400">{cat._count?.productos ?? 0} productos</td>
+                      <td className="px-4 py-3 text-gray-400">{cat.orden}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-2 justify-end">
+                          <button onClick={() => abrirEditar(cat)}
+                            className="flex items-center gap-1 px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-500 hover:bg-gray-50 transition-colors">
+                            <Pencil size={11} /> Editar
+                          </button>
+                          <button onClick={() => setConfirmDel(cat)}
+                            className="flex items-center gap-1 px-2.5 py-1.5 border border-red-200 rounded-lg text-xs text-red-500 hover:bg-red-50 transition-colors">
+                            <Trash2 size={11} /> Eliminar
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Cards móvil */}
+            <div className="sm:hidden divide-y divide-gray-100">
+              {categorias.map(cat => (
+                <div key={cat.id} className="p-4 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-sm text-[#111]">{cat.nombre}</p>
+                    <p className="text-xs text-gray-400">{cat._count?.productos ?? 0} productos · Orden: {cat.orden}</p>
+                  </div>
+                  <div className="flex gap-2 flex-shrink-0">
+                    <button onClick={() => abrirEditar(cat)}
+                      className="p-2 border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50">
+                      <Pencil size={13} />
+                    </button>
+                    <button onClick={() => setConfirmDel(cat)}
+                      className="p-2 border border-red-200 rounded-lg text-red-500 hover:bg-red-50">
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+          </>
         )}
       </div>
 
-      {/* ── Modal crear/editar ── */}
+      {/* Modal crear/editar */}
       {modal !== null && (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 50,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
-          background: 'rgba(0,0,0,0.6)',
-        }} onClick={() => !guardando && setModal(null)}>
-          <div style={{
-            background: '#fff', borderRadius: 16, width: '100%', maxWidth: 480,
-            boxShadow: '0 24px 48px rgba(0,0,0,0.15)',
-          }} onClick={e => e.stopPropagation()}>
-
-            {/* Header modal */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid #f0ede8' }}>
-              <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
+          onClick={() => !guardando && setModal(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <h2 className="text-base font-bold">
                 {modal === 'nuevo' ? 'Nueva categoría' : `Editar: ${modal.nombre}`}
               </h2>
-              <button onClick={() => !guardando && setModal(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#aaa' }}>
-                <X size={20} />
+              <button onClick={() => !guardando && setModal(null)} className="text-gray-400 hover:text-gray-600">
+                <X size={18} />
               </button>
             </div>
 
-            {/* Body */}
-            <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div className="p-5 flex flex-col gap-4">
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#555', marginBottom: 6 }}>
-                  Nombre *
-                </label>
-                <input
-                  autoFocus
-                  value={form.nombre}
-                  onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))}
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5">Nombre *</label>
+                <input autoFocus value={form.nombre} onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))}
                   placeholder="Ej: Remeras"
-                  style={{
-                    width: '100%', padding: '10px 12px', border: '1px solid #e0dbd5',
-                    borderRadius: 8, fontSize: 14, outline: 'none', boxSizing: 'border-box',
-                  }}
-                />
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm outline-none focus:border-gray-400" />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#555', marginBottom: 6 }}>
-                  Descripción
-                </label>
-                <textarea
-                  value={form.descripcion}
-                  onChange={e => setForm(p => ({ ...p, descripcion: e.target.value }))}
-                  rows={3}
-                  placeholder="Descripción opcional..."
-                  style={{
-                    width: '100%', padding: '10px 12px', border: '1px solid #e0dbd5',
-                    borderRadius: 8, fontSize: 14, outline: 'none', resize: 'none', boxSizing: 'border-box',
-                  }}
-                />
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5">Descripción</label>
+                <textarea value={form.descripcion} onChange={e => setForm(p => ({ ...p, descripcion: e.target.value }))}
+                  rows={3} placeholder="Descripción opcional..."
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm outline-none resize-none focus:border-gray-400" />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#555', marginBottom: 6 }}>
-                  Orden en el menú
-                </label>
-                <input
-                  type="number"
-                  value={form.orden}
-                  onChange={e => setForm(p => ({ ...p, orden: parseInt(e.target.value) || 0 }))}
-                  style={{
-                    width: 100, padding: '10px 12px', border: '1px solid #e0dbd5',
-                    borderRadius: 8, fontSize: 14, outline: 'none',
-                  }}
-                />
-                <p style={{ fontSize: 11, color: '#aaa', marginTop: 4 }}>Número menor = aparece primero</p>
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5">Orden en el menú</label>
+                <input type="number" value={form.orden} onChange={e => setForm(p => ({ ...p, orden: parseInt(e.target.value) || 0 }))}
+                  className="w-24 px-3 py-2.5 border border-gray-200 rounded-lg text-sm outline-none focus:border-gray-400" />
+                <p className="text-[11px] text-gray-400 mt-1">Número menor = aparece primero</p>
               </div>
-
-              {error && (
-                <p style={{ fontSize: 13, color: '#ef4444', margin: 0 }}>{error}</p>
-              )}
+              {error && <p className="text-sm text-red-500">{error}</p>}
             </div>
 
-            {/* Footer modal */}
-            <div style={{ display: 'flex', gap: 10, padding: '16px 24px', borderTop: '1px solid #f0ede8' }}>
-              <button onClick={() => !guardando && setModal(null)} disabled={guardando} style={{
-                flex: 1, padding: '10px', border: '1px solid #e0dbd5', borderRadius: 8,
-                background: 'transparent', fontSize: 13, fontWeight: 600, cursor: 'pointer', color: '#555',
-              }}>
+            <div className="flex gap-2 px-5 py-4 border-t border-gray-100">
+              <button onClick={() => !guardando && setModal(null)} disabled={guardando}
+                className="flex-1 py-2.5 border border-gray-200 rounded-lg text-sm font-semibold text-gray-500 hover:bg-gray-50 transition-colors">
                 Cancelar
               </button>
-              <button onClick={guardar} disabled={guardando} style={{
-                flex: 1, padding: '10px', border: 'none', borderRadius: 8,
-                background: '#111', color: '#fff', fontSize: 13, fontWeight: 600,
-                cursor: 'pointer', opacity: guardando ? 0.6 : 1,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              }}>
-                {guardando && <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />}
+              <button onClick={guardar} disabled={guardando}
+                className="flex-1 py-2.5 bg-[#111] text-white rounded-lg text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60 hover:bg-gray-800 transition-colors">
+                {guardando && <Loader2 size={13} className="animate-spin" />}
                 {guardando ? 'Guardando...' : 'Guardar'}
               </button>
             </div>
@@ -243,37 +200,27 @@ export default function AdminCategoriasPage() {
         </div>
       )}
 
-      {/* ── Modal confirmar eliminar ── */}
+      {/* Modal confirmar eliminar */}
       {confirmDel && (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 50,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
-          background: 'rgba(0,0,0,0.6)',
-        }} onClick={() => setConfirmDel(null)}>
-          <div style={{
-            background: '#fff', borderRadius: 16, width: '100%', maxWidth: 380, padding: 28,
-            textAlign: 'center',
-          }} onClick={e => e.stopPropagation()}>
-            <div style={{
-              width: 48, height: 48, borderRadius: '50%', background: '#fff5f5',
-              border: '1px solid #fecaca', display: 'flex', alignItems: 'center',
-              justifyContent: 'center', margin: '0 auto 16px',
-            }}>
-              <Trash2 size={20} color="#ef4444" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
+          onClick={() => setConfirmDel(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-sm p-6 text-center shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="w-12 h-12 rounded-full bg-red-50 border border-red-200 flex items-center justify-center mx-auto mb-4">
+              <Trash2 size={20} className="text-red-500" />
             </div>
-            <h3 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 8px' }}>¿Eliminar categoría?</h3>
-            <p style={{ fontSize: 13, color: '#888', margin: '0 0 24px' }}>
+            <h3 className="text-base font-bold mb-2">¿Eliminar categoría?</h3>
+            <p className="text-sm text-gray-400 mb-5">
               Vas a eliminar <strong>{confirmDel.nombre}</strong>. Los productos quedarán sin categoría.
             </p>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => setConfirmDel(null)} style={{
-                flex: 1, padding: '10px', border: '1px solid #e0dbd5', borderRadius: 8,
-                background: 'transparent', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-              }}>Cancelar</button>
-              <button onClick={() => eliminar(confirmDel.id)} style={{
-                flex: 1, padding: '10px', border: 'none', borderRadius: 8,
-                background: '#ef4444', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-              }}>Eliminar</button>
+            <div className="flex gap-2">
+              <button onClick={() => setConfirmDel(null)}
+                className="flex-1 py-2.5 border border-gray-200 rounded-lg text-sm font-semibold text-gray-500 hover:bg-gray-50 transition-colors">
+                Cancelar
+              </button>
+              <button onClick={() => eliminar(confirmDel.id)}
+                className="flex-1 py-2.5 bg-red-500 text-white rounded-lg text-sm font-semibold hover:bg-red-600 transition-colors">
+                Eliminar
+              </button>
             </div>
           </div>
         </div>

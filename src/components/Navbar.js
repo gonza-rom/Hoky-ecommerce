@@ -19,12 +19,12 @@ export default function Navbar() {
   const { toggleCart, getItemCount } = useCart();
   const itemCount   = getItemCount();
   const userMenuRef = useRef(null);
-  const supabase = useMemo(() => createClient(), []);
+  const supabase    = useMemo(() => createClient(), []);
 
   const links = [
-    { href: '/productos', label: 'Catálogo'  },
-    { href: '/nosotros',  label: 'Nosotros'  },
-    { href: '/contacto',  label: 'Contacto'  },
+    { href: '/productos', label: 'Catálogo' },
+    { href: '/nosotros',  label: 'Nosotros' },
+    { href: '/contacto',  label: 'Contacto' },
   ];
 
   useEffect(() => {
@@ -32,13 +32,11 @@ export default function Navbar() {
       setUser(user);
       setLoadingUser(false);
     });
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
     });
-
     return () => subscription.unsubscribe();
-  }, [supabase]); // supabase es estable gracias a useMemo
+  }, [supabase]);
 
   useEffect(() => {
     function handleClick(e) {
@@ -61,6 +59,7 @@ export default function Navbar() {
 
   return (
     <>
+      {/* ── Ticker ── */}
       <div className="bg-hoky-black text-white overflow-hidden py-2">
         <div className="flex animate-scroll whitespace-nowrap">
           {[...Array(6)].map((_, i) => (
@@ -71,74 +70,51 @@ export default function Navbar() {
         </div>
       </div>
 
+      {/* ── Navbar ── */}
       <nav className="bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between h-16 md:h-20">
+          <div className="grid grid-cols-3 items-center h-14 md:h-16">
 
-            <div className="hidden lg:flex items-center gap-8">
-              {links.map((link) => (
-                <Link key={link.href} href={link.href}
-                  className="text-xs font-semibold tracking-[0.12em] uppercase text-gray-600 hover:text-hoky-black transition-colors">
-                  {link.label}
-                </Link>
-              ))}
-            </div>
+            {/* ── Col izquierda: usuario (desktop) + links desktop ── */}
+            <div className="flex items-center gap-1 lg:gap-1">
 
-            <Link href="/" className="absolute left-1/2 -translate-x-1/2">
-              <div className="relative h-10 w-28 md:h-12 md:w-32">
-                <Image src="/logo.jpeg" alt="Hoky Indumentaria" fill className="object-contain" priority />
-              </div>
-            </Link>
-
-            <div className="flex items-center gap-1 ml-auto">
-
+              {/* Ícono usuario — visible en móvil y desktop, siempre a la izquierda */}
               {!loadingUser && (
                 user ? (
-                  <div ref={userMenuRef} style={{ position: 'relative' }}>
+                  <div ref={userMenuRef} className="relative">
                     <button
                       onClick={() => setUserMenuAbierto(!userMenuAbierto)}
-                      className="flex items-center gap-1.5 p-2 text-hoky-black hover:opacity-60 transition-opacity"
+                      className="flex items-center gap-1 p-2 text-hoky-black hover:opacity-60 transition-opacity"
                       aria-label="Mi cuenta"
                     >
-                      <div style={{
-                        width: 28, height: 28, borderRadius: '50%',
-                        background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}>
-                        <User size={14} color="#fff" />
+                      <div className="w-7 h-7 rounded-full bg-hoky-black flex items-center justify-center flex-shrink-0">
+                        <User size={13} color="#fff" />
                       </div>
-                      <ChevronDown size={12} className="hidden md:block text-gray-400" />
+                      <ChevronDown size={11} className="hidden md:block text-gray-400" />
                     </button>
 
+                    {/* Dropdown usuario */}
                     {userMenuAbierto && (
-                      <div style={{
-                        position: 'absolute', right: 0, top: 'calc(100% + 8px)',
-                        background: '#fff', border: '1px solid #e8e5e0',
-                        borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
-                        minWidth: 200, zIndex: 100, overflow: 'hidden',
-                      }}>
-                        <div style={{ padding: '12px 16px', borderBottom: '1px solid #f0ede8' }}>
-                          <p style={{ fontSize: 13, fontWeight: 700, color: '#111', margin: '0 0 2px', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {nombre}
-                          </p>
-                          <p style={{ fontSize: 11, color: '#aaa', margin: 0, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {user.email}
-                          </p>
+                      <div className="absolute left-0 top-[calc(100%+8px)] bg-white border border-gray-200 rounded-xl shadow-xl min-w-[200px] z-50 overflow-hidden">
+                        <div className="px-4 py-3 border-b border-gray-100">
+                          <p className="text-[13px] font-bold text-hoky-black truncate max-w-[160px]">{nombre}</p>
+                          <p className="text-[11px] text-gray-400 truncate max-w-[160px]">{user.email}</p>
                         </div>
-
-                        <div style={{ padding: '6px 0' }}>
-                          <Link href="/cuenta" onClick={() => setUserMenuAbierto(false)} style={itemMenuStyle}>
+                        <div className="py-1.5">
+                          <Link href="/cuenta" onClick={() => setUserMenuAbierto(false)}
+                            className="flex items-center gap-2 px-4 py-2.5 text-[13px] text-gray-600 hover:bg-gray-50 transition-colors no-underline">
                             <User size={14} /> Mi cuenta
                           </Link>
                           {esAdmin && (
                             <Link href="/admin" onClick={() => setUserMenuAbierto(false)}
-                              style={{ ...itemMenuStyle, color: '#111', fontWeight: 700 }}>
+                              className="flex items-center gap-2 px-4 py-2.5 text-[13px] font-bold text-hoky-black hover:bg-gray-50 transition-colors no-underline">
                               <LayoutDashboard size={14} /> Panel Admin
                             </Link>
                           )}
                         </div>
-
-                        <div style={{ padding: '6px 0', borderTop: '1px solid #f0ede8' }}>
-                          <button onClick={handleLogout} style={{ ...itemMenuStyle, width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444' }}>
+                        <div className="py-1.5 border-t border-gray-100">
+                          <button onClick={handleLogout}
+                            className="flex items-center gap-2 px-4 py-2.5 text-[13px] text-red-500 hover:bg-red-50 transition-colors w-full text-left">
                             <LogOut size={14} /> Cerrar sesión
                           </button>
                         </div>
@@ -147,44 +123,80 @@ export default function Navbar() {
                   </div>
                 ) : (
                   <Link href="/auth/login"
-                    className="hidden md:flex items-center gap-1.5 text-xs font-semibold tracking-[0.08em] uppercase text-gray-600 hover:text-hoky-black transition-colors p-2">
-                    <User size={16} />
-                    <span>Ingresar</span>
+                    className="flex items-center gap-1.5 p-2 text-xs font-semibold tracking-[0.08em] uppercase text-gray-600 hover:text-hoky-black transition-colors">
+                    <User size={15} />
+                    <span className="hidden lg:inline">Ingresar</span>
                   </Link>
                 )
               )}
 
+              {/* Links de navegación — solo desktop, después del ícono de usuario */}
+              <div className="hidden lg:flex items-center gap-5">
+                {links.map((link) => (
+                  <Link key={link.href} href={link.href}
+                    className="text-xs font-semibold tracking-[0.12em] uppercase text-gray-600 hover:text-hoky-black transition-colors whitespace-nowrap">
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            {/* ── Col centro: logo ── */}
+            <div className="flex justify-center">
+              <Link href="/">
+                <div className="relative h-9 w-24 md:h-11 md:w-28">
+                  <Image
+                    src="/logo.jpeg"
+                    alt="Hoky Indumentaria"
+                    fill
+                    className="object-contain"
+                    priority
+                  />
+                </div>
+              </Link>
+            </div>
+
+            {/* ── Col derecha: carrito + hamburguesa ── */}
+            <div className="flex items-center justify-end gap-0.5">
+
+              {/* Carrito */}
               <button onClick={toggleCart}
                 className="relative p-2 text-hoky-black hover:opacity-60 transition-opacity"
                 aria-label="Abrir carrito">
                 <ShoppingCart className="w-5 h-5" />
                 {itemCount > 0 && (
-                  <span className="cart-badge absolute -top-1 -right-1 bg-hoky-black text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                  <span className="cart-badge absolute -top-0.5 -right-0.5 bg-hoky-black text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center leading-none">
                     {itemCount}
                   </span>
                 )}
               </button>
 
-              <button onClick={() => setMenuAbierto(!menuAbierto)}
+              {/* Hamburguesa móvil */}
+              <button
+                onClick={() => setMenuAbierto(!menuAbierto)}
                 className="lg:hidden p-2 text-hoky-black hover:opacity-60 transition-opacity"
-                aria-label="Menú">
+                aria-label="Menú"
+              >
                 {menuAbierto ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </button>
             </div>
+
           </div>
         </div>
 
+        {/* ── Menú móvil expandido ── */}
         {menuAbierto && (
           <div className="lg:hidden border-t border-gray-100 bg-white">
-            <div className="container mx-auto px-4 py-4 space-y-1">
+            <div className="container mx-auto px-4 py-3 space-y-0.5">
               {links.map((link) => (
                 <Link key={link.href} href={link.href}
                   onClick={() => setMenuAbierto(false)}
-                  className="block py-3 text-xs font-semibold tracking-[0.12em] uppercase text-gray-700 hover:text-hoky-black border-b border-gray-100 transition-colors">
+                  className="flex items-center py-3 text-xs font-semibold tracking-[0.12em] uppercase text-gray-700 hover:text-hoky-black border-b border-gray-100 transition-colors">
                   {link.label}
                 </Link>
               ))}
-              <div className="pt-2">
+
+              <div className="pt-1">
                 {user ? (
                   <>
                     <Link href="/cuenta" onClick={() => setMenuAbierto(false)}
@@ -218,10 +230,3 @@ export default function Navbar() {
     </>
   );
 }
-
-const itemMenuStyle = {
-  display: 'flex', alignItems: 'center', gap: 8,
-  padding: '9px 16px', fontSize: 13, color: '#444',
-  textDecoration: 'none', transition: 'background 0.1s',
-  cursor: 'pointer',
-};

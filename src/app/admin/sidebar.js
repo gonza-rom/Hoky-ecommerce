@@ -90,7 +90,7 @@ export default function AdminSidebar() {
       </aside>
 
       {/* ── Mobile top bar ── */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-[#111] text-white flex items-center justify-between px-4 h-14">
+      <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-[#111] text-white flex items-center justify-between px-4 h-12">
         <span className="text-base font-black tracking-widest uppercase">HOKY Admin</span>
         <button
           onClick={() => setAbierto(!abierto)}

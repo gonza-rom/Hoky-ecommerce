@@ -168,7 +168,7 @@ export default function Home() {
         }
         @media (min-width: 1280px) {
           .hk-grid {
-            grid-template-columns: repeat(8, 1fr);
+            grid-template-columns: repeat(6, 1fr);
           }
         }
 

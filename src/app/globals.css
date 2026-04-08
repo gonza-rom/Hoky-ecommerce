@@ -86,7 +86,6 @@ video {
 
 /* ── Touch: área mínima de 44px para botones táctiles ── */
 button,
-a,
 [role="button"] {
   min-height: 44px;
   min-width: 44px;

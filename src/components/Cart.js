@@ -4,7 +4,6 @@ import { X, Plus, Minus, Trash2, ShoppingBag } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
-import { showToast } from 'nextjs-toast-notify';
 
 export default function Cart() {
   const {
@@ -50,7 +49,7 @@ export default function Cart() {
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#aaa', gap: 12 }}>
               <ShoppingBag size={48} color="#ddd" />
               <p style={{ fontSize: 15, margin: 0 }}>Tu carrito está vacío</p>
-              <p style={{ fontSize: 13, margin: 0, color: '#ccc' }}>¡Agregá productos para empezar!</p>
+              <p style={{ fontSize: 13, margin: 0, color: '#ccc' }}>Agregá productos para empezar</p>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -144,7 +143,7 @@ export default function Cart() {
               Ir al checkout →
             </Link>
 
-            {/* WhatsApp (secundario) */}
+            {/* WhatsApp */}
             <button
               onClick={() => {
                 const items = cart.map((item, i) => {
@@ -167,11 +166,9 @@ export default function Cart() {
               Consultar por WhatsApp
             </button>
 
+            {/* Vaciar carrito — ahora solo llama clearCart(), el toast lo maneja el contexto */}
             <button
-              onClick={() => {
-                clearCart();
-                showToast.warning('🧹 Carrito vaciado', { position: 'top-center', duration: 2000 });
-              }}
+              onClick={clearCart}
               style={{ background: 'transparent', border: 'none', fontSize: 12, color: '#aaa', cursor: 'pointer', padding: '4px 0' }}
             >
               Vaciar carrito
