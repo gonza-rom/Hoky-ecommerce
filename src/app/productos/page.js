@@ -4,7 +4,6 @@ import { Suspense, useEffect, useState, useCallback, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { ShoppingBag, Search, Filter, X, SlidersHorizontal, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
-import ProductCard from '@/components/ProductCard';
 
 const PAGE_SIZE = 12;
 
@@ -18,6 +17,75 @@ function useDebounce(value, delay) {
   return debounced;
 }
 
+// ── ProductCard inline con el nuevo formato ──────────────────────────────────
+function ProductCard({ producto, onAddToCart }) {
+  if (!producto) return null;
+
+  const { nombre, precio, imagenes, slug, id } = producto;
+
+  const precioTransferencia = Math.round(precio * 0.8);
+  const cuotas = 3;
+  const precioCuota = (precio / cuotas).toFixed(2);
+
+  const formatPrecio = (valor) =>
+    new Intl.NumberFormat('es-AR', {
+      style: 'currency',
+      currency: 'ARS',
+      minimumFractionDigits: 2,
+    }).format(valor);
+
+  const imagenUrl =
+    imagenes?.[0]?.url ||
+    imagenes?.[0] ||
+    '/placeholder.jpg';
+
+  return (
+    <div className="bg-white rounded-xl overflow-hidden flex flex-col">
+      {/* Imagen */}
+      <a href={`/productos/${slug || id}`} className="block">
+        <div className="relative w-full aspect-[3/4] overflow-hidden bg-gray-100">
+          <img
+            src={imagenUrl}
+            alt={nombre}
+            className="w-full h-full object-cover object-top hover:scale-105 transition-transform duration-500"
+          />
+        </div>
+      </a>
+
+      {/* Info */}
+      <div className="p-4 flex flex-col gap-2 flex-1">
+        {/* Nombre */}
+        <h3 className="text-base font-bold text-gray-900 uppercase tracking-wide leading-tight">
+          {nombre}
+        </h3>
+
+        {/* Precio principal */}
+        <p className="text-2xl font-bold text-gray-900">
+          {formatPrecio(precio)}
+        </p>
+
+        {/* Cuotas */}
+        <p className="text-sm text-gray-600">
+          {cuotas} x {formatPrecio(precioCuota)} sin interés
+        </p>
+
+        {/* Precio transferencia */}
+        <p className="text-base font-bold text-red-600">
+          {formatPrecio(precioTransferencia)} con Transferencia
+        </p>
+
+        {/* Botón */}
+        <button
+          onClick={() => onAddToCart?.(producto)}
+          className="mt-2 w-full bg-black hover:bg-gray-800 text-white font-semibold py-3 rounded-full text-base transition-colors"
+        >
+          Comprar
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Componente de paginación ─────────────────────────────────────────────────
 function Pagination({ pagination, onPageChange }) {
   if (!pagination || pagination.totalPages <= 1) return null;
@@ -26,7 +94,6 @@ function Pagination({ pagination, onPageChange }) {
   const desde = (page - 1) * pageSize + 1;
   const hasta = Math.min(page * pageSize, total);
 
-  // Generar páginas visibles (max 5 botones)
   const getPages = () => {
     const delta = 2;
     const range = [];
@@ -46,7 +113,6 @@ function Pagination({ pagination, onPageChange }) {
       </p>
 
       <div className="flex items-center gap-1">
-        {/* Primera página */}
         <button
           onClick={() => onPageChange(1)}
           disabled={page === 1}
@@ -56,7 +122,6 @@ function Pagination({ pagination, onPageChange }) {
           <ChevronsLeft className="w-4 h-4" />
         </button>
 
-        {/* Página anterior */}
         <button
           onClick={() => onPageChange(page - 1)}
           disabled={page === 1}
@@ -66,7 +131,6 @@ function Pagination({ pagination, onPageChange }) {
           <ChevronLeft className="w-4 h-4" />
         </button>
 
-        {/* Ellipsis inicio */}
         {getPages()[0] > 1 && (
           <>
             <button
@@ -77,7 +141,6 @@ function Pagination({ pagination, onPageChange }) {
           </>
         )}
 
-        {/* Páginas numeradas */}
         {getPages().map((p) => (
           <button
             key={p}
@@ -92,7 +155,6 @@ function Pagination({ pagination, onPageChange }) {
           </button>
         ))}
 
-        {/* Ellipsis fin */}
         {getPages()[getPages().length - 1] < totalPages && (
           <>
             {getPages()[getPages().length - 1] < totalPages - 1 && (
@@ -105,7 +167,6 @@ function Pagination({ pagination, onPageChange }) {
           </>
         )}
 
-        {/* Página siguiente */}
         <button
           onClick={() => onPageChange(page + 1)}
           disabled={page === totalPages}
@@ -115,7 +176,6 @@ function Pagination({ pagination, onPageChange }) {
           <ChevronRight className="w-4 h-4" />
         </button>
 
-        {/* Última página */}
         <button
           onClick={() => onPageChange(totalPages)}
           disabled={page === totalPages}
@@ -140,19 +200,16 @@ function ProductosContent() {
   const [loading,     setLoading]     = useState(true);
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
 
-  // Filtros locales (con debounce en busqueda)
-  const [busquedaInput,      setBusquedaInput]      = useState(searchParams.get('busqueda') || '');
+  const [busquedaInput,         setBusquedaInput]         = useState(searchParams.get('busqueda') || '');
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState(searchParams.get('categoria') || '');
-  const [ordenar,            setOrdenar]            = useState('');
-  const [page,               setPage]               = useState(1);
+  const [ordenar,               setOrdenar]               = useState('');
+  const [page,                  setPage]                  = useState(1);
 
   const busqueda = useDebounce(busquedaInput, 400);
   const { addToCart } = useCart();
-
-  // Referencia para scroll al cambiar página
   const topRef = useRef(null);
 
-  // ── Fetch de categorías (una sola vez) ──────────────────────────────────
+  // Fetch de categorías
   useEffect(() => {
     fetch('/api/categorias')
       .then(r => r.json())
@@ -160,16 +217,16 @@ function ProductosContent() {
       .catch(console.error);
   }, []);
 
-  // ── Fetch de productos (se dispara cuando cambian los filtros o la página) ─
+  // Fetch de productos
   const fetchProductos = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       params.set('page',     String(page));
       params.set('pageSize', String(PAGE_SIZE));
-      if (busqueda)             params.set('busqueda',  busqueda);
+      if (busqueda)              params.set('busqueda',  busqueda);
       if (categoriaSeleccionada) params.set('categoria', categoriaSeleccionada);
-      if (ordenar)              params.set('ordenar',   ordenar);
+      if (ordenar)               params.set('ordenar',   ordenar);
 
       const response = await fetch(`/api/productos?${params.toString()}`);
       const data     = await response.json();
@@ -178,7 +235,6 @@ function ProductosContent() {
         setProductos(data.productos);
         setPagination(data.pagination);
       } else {
-        // Fallback para compatibilidad (si la API devuelve array directo)
         setProductos(Array.isArray(data) ? data : []);
         setPagination(null);
       }
@@ -200,7 +256,6 @@ function ProductosContent() {
 
   const handlePageChange = (newPage) => {
     setPage(newPage);
-    // Scroll suave al inicio de la lista
     topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
@@ -441,7 +496,16 @@ function ProductosContent() {
           {loading ? (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
               {[...Array(PAGE_SIZE)].map((_, i) => (
-                <div key={i} className="bg-gray-200 h-80 rounded-lg animate-pulse" />
+                <div key={i} className="bg-gray-200 rounded-xl animate-pulse">
+                  <div className="aspect-[3/4] w-full" />
+                  <div className="p-4 space-y-3">
+                    <div className="h-4 bg-gray-300 rounded w-3/4" />
+                    <div className="h-6 bg-gray-300 rounded w-1/2" />
+                    <div className="h-3 bg-gray-300 rounded w-2/3" />
+                    <div className="h-4 bg-gray-300 rounded w-1/2" />
+                    <div className="h-10 bg-gray-300 rounded-full" />
+                  </div>
+                </div>
               ))}
             </div>
           ) : productos.length === 0 ? (
@@ -488,7 +552,16 @@ export default function ProductosPage() {
         <div className="container mx-auto px-4 py-8">
           <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
             {[...Array(12)].map((_, i) => (
-              <div key={i} className="bg-gray-200 h-80 rounded-lg animate-pulse" />
+              <div key={i} className="bg-gray-200 rounded-xl animate-pulse">
+                <div className="aspect-[3/4] w-full" />
+                <div className="p-4 space-y-3">
+                  <div className="h-4 bg-gray-300 rounded w-3/4" />
+                  <div className="h-6 bg-gray-300 rounded w-1/2" />
+                  <div className="h-3 bg-gray-300 rounded w-2/3" />
+                  <div className="h-4 bg-gray-300 rounded w-1/2" />
+                  <div className="h-10 bg-gray-300 rounded-full" />
+                </div>
+              </div>
             ))}
           </div>
         </div>
