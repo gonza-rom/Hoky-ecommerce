@@ -5,13 +5,14 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  ArrowLeft, ShoppingBag, MapPin, Truck, CheckCircle,
-  Loader2, AlertCircle, ChevronRight, Store, Package,
+  ArrowLeft, ShoppingBag, Truck, CheckCircle,
+  Loader2, AlertCircle, Store,
   CreditCard, Banknote, Building2, Tag, X,
 } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { createClient } from '@/lib/supabase/client';
-import { calcularEnvio, PROVINCIAS_AR, ENVIO_GRATIS_DESDE } from '@/lib/envio';
+import { calcularEnvio, PROVINCIAS_AR } from '@/lib/envio';
+import PaywayForm from '@/components/PaywayForm';
 
 const DESCUENTO_DEFAULT = 10;
 
@@ -35,7 +36,7 @@ const TRANSFERENCIA = {
   alias:   'HOKY.INDUMENTARIA',
 };
 
-// ── Barra de pasos ────────────────────────────────────────────────────────────
+// ── Barra de pasos ─────────────────────────────────────────────────────────
 function StepBar({ paso }) {
   const pasos = ['Contacto', 'Entrega', 'Pago'];
   return (
@@ -68,14 +69,13 @@ function StepBar({ paso }) {
   );
 }
 
-// ── Resumen lateral ───────────────────────────────────────────────────────────
+// ── Resumen lateral ─────────────────────────────────────────────────────────
 function ResumenLateral({ cart, subtotal, costoEnvio, total, tipoEnvio, infoEnvio, metodoPago, ahorroTotal, tieneDescuento }) {
-  const [cuponInput, setCuponInput] = useState('');
-  const [mostrarCupon, setMostrarCupon] = useState(false);
+  const [cuponInput,    setCuponInput]    = useState('');
+  const [mostrarCupon,  setMostrarCupon]  = useState(false);
 
   return (
     <div className="bg-gray-50 border border-gray-200 rounded-2xl overflow-hidden">
-      {/* Productos */}
       <div className="p-5 flex flex-col gap-3 max-h-64 overflow-y-auto">
         {cart.map(item => {
           const precioFinal = getPrecioItem(item, metodoPago);
@@ -104,7 +104,6 @@ function ResumenLateral({ cart, subtotal, costoEnvio, total, tipoEnvio, infoEnvi
 
       <div className="border-t border-gray-200" />
 
-      {/* Cupón */}
       <div className="px-5 py-3">
         {!mostrarCupon ? (
           <button onClick={() => setMostrarCupon(true)}
@@ -125,13 +124,12 @@ function ResumenLateral({ cart, subtotal, costoEnvio, total, tipoEnvio, infoEnvi
 
       <div className="border-t border-gray-200" />
 
-      {/* Totales */}
       <div className="p-5 flex flex-col gap-2">
         <div className="flex justify-between text-sm text-gray-600">
           <span>Subtotal</span>
           <span>{fmt(subtotal)}</span>
         </div>
-        {tieneDescuento && metodoPago && metodoPago !== 'mercadopago' && (
+        {tieneDescuento && metodoPago && metodoPago !== 'mercadopago' && metodoPago !== 'payway' && (
           <div className="flex justify-between text-sm text-green-600 font-medium">
             <span>Descuento ({metodoPago})</span>
             <span>- {fmt(ahorroTotal)}</span>
@@ -156,23 +154,23 @@ function ResumenLateral({ cart, subtotal, costoEnvio, total, tipoEnvio, infoEnvi
   );
 }
 
-// ── Checkout principal ────────────────────────────────────────────────────────
+// ── Checkout principal ──────────────────────────────────────────────────────
 export default function CheckoutPage() {
   const router   = useRouter();
   const { cart, clearCart } = useCart();
   const supabase = createClient();
   const pedidoConfirmado = useRef(false);
 
-  const [paso,      setPaso]      = useState(1); // 1, 2, 3
-  const [user,      setUser]      = useState(null);
-  const [loading,   setLoading]   = useState(false);
-  const [error,     setError]     = useState('');
-  const [infoEnvio, setInfoEnvio] = useState(null);
-
-  const [tipoEnvio,  setTipoEnvio]  = useState('');
-  const [metodoPago, setMetodoPago] = useState('');
-  const [errores,    setErrores]    = useState({});
-  const [copiado,    setCopiado]    = useState('');
+  const [paso,               setPaso]               = useState(1);
+  const [user,               setUser]               = useState(null);
+  const [loading,            setLoading]            = useState(false);
+  const [error,              setError]              = useState('');
+  const [infoEnvio,          setInfoEnvio]          = useState(null);
+  const [tipoEnvio,          setTipoEnvio]          = useState('');
+  const [metodoPago,         setMetodoPago]         = useState('');
+  const [errores,            setErrores]            = useState({});
+  const [copiado,            setCopiado]            = useState('');
+  const [pedidoIdConfirmado, setPedidoIdConfirmado] = useState(''); // para Payway
 
   const [form, setForm] = useState({
     nombre: '', email: '', telefono: '',
@@ -204,9 +202,8 @@ export default function CheckoutPage() {
     }
   }, [form.provincia, tipoEnvio]);
 
-  // ── Cálculo de totales ────────────────────────────────────
   const { subtotal, ahorroTotal, tieneDescuento } = useMemo(() => {
-    const sub = cart.reduce((acc, item) => acc + getPrecioItem(item, metodoPago) * item.cantidad, 0);
+    const sub     = cart.reduce((acc, item) => acc + getPrecioItem(item, metodoPago) * item.cantidad, 0);
     const sinDesc = cart.reduce((acc, item) => acc + item.precio * item.cantidad, 0);
     return { subtotal: sub, ahorroTotal: sinDesc - sub, tieneDescuento: sinDesc - sub > 0 };
   }, [cart, metodoPago]);
@@ -222,7 +219,6 @@ export default function CheckoutPage() {
     });
   }
 
-  // ── Validaciones por paso ─────────────────────────────────
   function validarPaso1() {
     const e = {};
     if (!form.email.trim())    e.email    = 'Requerido';
@@ -234,13 +230,13 @@ export default function CheckoutPage() {
 
   function validarPaso2() {
     const e = {};
-    if (!tipoEnvio) e.tipoEnvio = 'Seleccioná una opción de entrega';
-    if (!form.nombre.trim())   e.nombre   = 'Requerido';
-    if (!form.telefono.trim()) e.telefono = 'Requerido';
+    if (!tipoEnvio)            e.tipoEnvio = 'Seleccioná una opción de entrega';
+    if (!form.nombre.trim())   e.nombre    = 'Requerido';
+    if (!form.telefono.trim()) e.telefono  = 'Requerido';
     if (tipoEnvio === 'envio') {
-      if (!form.calle.trim())   e.calle    = 'Requerido';
-      if (!form.ciudad.trim())  e.ciudad   = 'Requerido';
-      if (!form.provincia)      e.provincia = 'Requerido';
+      if (!form.calle.trim())  e.calle     = 'Requerido';
+      if (!form.ciudad.trim()) e.ciudad    = 'Requerido';
+      if (!form.provincia)     e.provincia = 'Requerido';
     }
     setErrores(e);
     return Object.keys(e).length === 0;
@@ -254,11 +250,7 @@ export default function CheckoutPage() {
   }
 
   function irAPaso2() {
-    if (validarPaso1()) {
-      // Pre-calcular envío con el CP ingresado
-      if (form.codigoPostal) setTipoEnvio('');
-      setPaso(2);
-    }
+    if (validarPaso1()) { setTipoEnvio(''); setPaso(2); }
   }
 
   function irAPaso3() {
@@ -267,7 +259,9 @@ export default function CheckoutPage() {
 
   async function confirmar() {
     if (!validarPaso3()) return;
-    setLoading(true); setError('');
+    setLoading(true);
+    setError('');
+
     try {
       const payload = {
         items: cart.map(item => {
@@ -310,13 +304,24 @@ export default function CheckoutPage() {
       if (!data.ok) { setError(data.error ?? 'Error al procesar el pedido'); return; }
 
       pedidoConfirmado.current = true;
+
+      // Payway → guardar pedidoId y mostrar formulario de tarjeta
+      if (metodoPago === 'payway') {
+        setPedidoIdConfirmado(data.pedidoId);
+        return; // el carrito se limpia en onSuccess del PaywayForm
+      }
+
+      // MercadoPago
       if (metodoPago === 'mercadopago' && data.mpInitPoint) {
         clearCart();
         window.location.href = data.mpInitPoint;
-      } else {
-        clearCart();
-        router.push(`/checkout/exito?pedido=${data.pedidoId}&metodo=${metodoPago}`);
+        return;
       }
+
+      // Transferencia / Efectivo
+      clearCart();
+      router.push(`/checkout/exito?pedido=${data.pedidoId}&metodo=${metodoPago}`);
+
     } catch { setError('Error de conexión. Intentá de nuevo.'); }
     finally  { setLoading(false); }
   }
@@ -324,6 +329,21 @@ export default function CheckoutPage() {
   if (cart.length === 0 && !pedidoConfirmado.current) return null;
 
   const inp = (err) => `w-full px-3 py-2.5 border ${err ? 'border-red-300' : 'border-gray-200'} rounded-lg text-sm outline-none focus:border-gray-400 bg-white`;
+
+  const maxDescuento = cart.length > 0 ? Math.max(...cart.map(i => i.descuentoEfectivo ?? DESCUENTO_DEFAULT)) : DESCUENTO_DEFAULT;
+
+  const metodosPago = [
+    { id: 'payway',       icon: CreditCard, label: 'Tarjeta de crédito / débito', desc: 'Visa, Mastercard, Amex, Naranja y más',              badge: null },
+    { id: 'mercadopago',  icon: CreditCard, label: 'Mercado Pago',                desc: 'Tarjeta, débito, efectivo en puntos de pago',         badge: null },
+    { id: 'transferencia',icon: Building2,  label: 'Transferencia bancaria',      desc: 'Transferí y envianos el comprobante',                  badge: `${maxDescuento}% OFF` },
+    { id: 'efectivo',     icon: Banknote,   label: 'Efectivo',                    desc: tipoEnvio === 'retiro' ? 'Al retirar en el local' : 'Al recibir el pedido', badge: `${maxDescuento}% OFF` },
+  ];
+
+  function labelBoton() {
+    if (metodoPago === 'payway')      return `Continuar con tarjeta · ${fmt(total)}`;
+    if (metodoPago === 'mercadopago') return `Pagar con Mercado Pago · ${fmt(total)}`;
+    return `Confirmar pedido · ${fmt(total)}`;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -369,9 +389,7 @@ export default function CheckoutPage() {
                     <div className="flex gap-2">
                       <input value={form.codigoPostal} onChange={e => setForm(p => ({ ...p, codigoPostal: e.target.value }))}
                         placeholder="Ej: 4700" className={`${inp(errores.codigoPostal)} max-w-[160px]`} />
-                      <button className="text-xs text-blue-500 hover:text-blue-700 font-medium whitespace-nowrap">
-                        No sé mi CP
-                      </button>
+                      <button className="text-xs text-blue-500 hover:text-blue-700 font-medium whitespace-nowrap">No sé mi CP</button>
                     </div>
                     {errores.codigoPostal && <p className="text-xs text-red-500 mt-1">{errores.codigoPostal}</p>}
                   </div>
@@ -387,7 +405,6 @@ export default function CheckoutPage() {
             {/* ══ PASO 2: Entrega ══ */}
             {paso === 2 && (
               <div className="bg-white rounded-2xl border border-gray-200 p-6 flex flex-col gap-5">
-                {/* Resumen contacto */}
                 <div className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
                   <div>
                     <p className="text-xs text-gray-400">Contacto</p>
@@ -426,7 +443,6 @@ export default function CheckoutPage() {
                   {errores.tipoEnvio && <p className="text-xs text-red-500 mb-2">{errores.tipoEnvio}</p>}
 
                   <div className="flex flex-col gap-2">
-                    {/* Retiro */}
                     <label className={`flex items-start gap-3 p-4 border-2 rounded-xl cursor-pointer transition-all ${tipoEnvio === 'retiro' ? 'border-[#111] bg-gray-50' : 'border-gray-200 hover:border-gray-300'}`}>
                       <input type="radio" name="entrega" value="retiro" checked={tipoEnvio === 'retiro'} onChange={() => setTipoEnvio('retiro')} className="mt-0.5" />
                       <div className="flex-1">
@@ -441,7 +457,6 @@ export default function CheckoutPage() {
                       </div>
                     </label>
 
-                    {/* Envío */}
                     <label className={`flex items-start gap-3 p-4 border-2 rounded-xl cursor-pointer transition-all ${tipoEnvio === 'envio' ? 'border-[#111] bg-gray-50' : 'border-gray-200 hover:border-gray-300'}`}>
                       <input type="radio" name="entrega" value="envio" checked={tipoEnvio === 'envio'} onChange={() => setTipoEnvio('envio')} className="mt-0.5" />
                       <div className="flex-1">
@@ -462,7 +477,6 @@ export default function CheckoutPage() {
                   </div>
                 </div>
 
-                {/* Dirección — solo si elige envío */}
                 {tipoEnvio === 'envio' && (
                   <div className="flex flex-col gap-3 border-t border-gray-100 pt-4">
                     <h3 className="text-sm font-bold text-gray-900">Dirección de entrega</h3>
@@ -502,7 +516,6 @@ export default function CheckoutPage() {
                       </div>
                     </div>
 
-                    {/* Info envío calculado */}
                     {infoEnvio && (
                       <div className={`rounded-xl p-3 flex items-start gap-2 ${infoEnvio.disponible ? infoEnvio.gratis ? 'bg-green-50 border border-green-200' : 'bg-blue-50 border border-blue-200' : 'bg-red-50 border border-red-200'}`}>
                         <span className="text-base">{infoEnvio.gratis ? '🎉' : infoEnvio.disponible ? '🚚' : '❌'}</span>
@@ -537,7 +550,6 @@ export default function CheckoutPage() {
             {/* ══ PASO 3: Pago ══ */}
             {paso === 3 && (
               <div className="bg-white rounded-2xl border border-gray-200 p-6 flex flex-col gap-5">
-                {/* Resumen entrega */}
                 <div className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
                   <div>
                     <p className="text-xs text-gray-400">Contacto</p>
@@ -555,91 +567,105 @@ export default function CheckoutPage() {
                   <button onClick={() => setPaso(2)} className="text-xs font-semibold text-blue-500 hover:text-blue-700">Cambiar</button>
                 </div>
 
-                <h2 className="text-base font-bold text-gray-900">Método de pago</h2>
-                {errores.metodoPago && <p className="text-xs text-red-500">{errores.metodoPago}</p>}
+                {/* ── Formulario Payway (aparece después de crear el pedido) ── */}
+                {metodoPago === 'payway' && pedidoIdConfirmado ? (
+                  <>
+                    <h2 className="text-base font-bold text-gray-900">Datos de tarjeta</h2>
+                    <PaywayForm
+                      total={total}
+                      pedidoId={pedidoIdConfirmado}
+                      compradorEmail={form.email}
+                      onSuccess={() => {
+                        clearCart();
+                        router.push(`/checkout/exito?pedido=${pedidoIdConfirmado}&metodo=payway`);
+                      }}
+                      onError={(data) => setError(data?.error || 'El pago fue rechazado')}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <h2 className="text-base font-bold text-gray-900">Método de pago</h2>
+                    {errores.metodoPago && <p className="text-xs text-red-500">{errores.metodoPago}</p>}
 
-                <div className="flex flex-col gap-2">
-                  {[
-                    { id: 'mercadopago',  icon: CreditCard,  label: 'Mercado Pago',          desc: 'Tarjeta, débito, efectivo en puntos de pago', badge: null },
-                    { id: 'transferencia',icon: Building2,    label: 'Transferencia bancaria', desc: 'Transferí y envianos el comprobante', badge: `${Math.max(...cart.map(i => i.descuentoEfectivo ?? DESCUENTO_DEFAULT))}% OFF` },
-                    { id: 'efectivo',     icon: Banknote,     label: 'Efectivo',              desc: tipoEnvio === 'retiro' ? 'Al retirar en el local' : 'Al recibir el pedido', badge: `${Math.max(...cart.map(i => i.descuentoEfectivo ?? DESCUENTO_DEFAULT))}% OFF` },
-                  ].map(({ id, icon: Icon, label, desc, badge }) => (
-                    <label key={id} className={`flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer transition-all ${metodoPago === id ? 'border-[#111] bg-gray-50' : 'border-gray-200 hover:border-gray-300'}`}>
-                      <input type="radio" name="pago" value={id} checked={metodoPago === id} onChange={() => setMetodoPago(id)} />
-                      <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
-                        <Icon size={16} className="text-gray-600" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-gray-900">{label}</span>
-                          {badge && <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{badge}</span>}
-                        </div>
-                        <p className="text-xs text-gray-500 mt-0.5">{desc}</p>
-                      </div>
-                    </label>
-                  ))}
-                </div>
+                    <div className="flex flex-col gap-2">
+                      {metodosPago.map(({ id, icon: Icon, label, desc, badge }) => (
+                        <label key={id} className={`flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer transition-all ${metodoPago === id ? 'border-[#111] bg-gray-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                          <input type="radio" name="pago" value={id} checked={metodoPago === id} onChange={() => setMetodoPago(id)} />
+                          <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                            <Icon size={16} className="text-gray-600" />
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-semibold text-gray-900">{label}</span>
+                              {badge && <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{badge}</span>}
+                            </div>
+                            <p className="text-xs text-gray-500 mt-0.5">{desc}</p>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
 
-                {/* Datos de transferencia */}
-                {metodoPago === 'transferencia' && (
-                  <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex flex-col gap-2">
-                    <p className="text-xs font-bold text-green-700 uppercase tracking-wider mb-1">Datos para transferir</p>
-                    {[
-                      { label: 'Titular', value: TRANSFERENCIA.titular },
-                      { label: 'Banco',   value: TRANSFERENCIA.banco },
-                      { label: 'CBU',     value: TRANSFERENCIA.cbu,   campo: 'cbu' },
-                      { label: 'Alias',   value: TRANSFERENCIA.alias, campo: 'alias' },
-                    ].map(({ label, value, campo }) => (
-                      <div key={label} className="flex items-center justify-between gap-3">
-                        <div>
-                          <p className="text-[11px] text-gray-500">{label}</p>
-                          <p className="text-xs font-bold text-gray-900 font-mono">{value}</p>
-                        </div>
-                        {campo && (
-                          <button onClick={() => copiar(campo)}
-                            className={`text-xs px-2.5 py-1 rounded-lg font-semibold transition-all flex-shrink-0 ${copiado === campo ? 'bg-green-600 text-white' : 'bg-white border border-green-300 text-green-700'}`}>
-                            {copiado === campo ? '✓' : 'Copiar'}
-                          </button>
-                        )}
+                    {/* Datos transferencia */}
+                    {metodoPago === 'transferencia' && (
+                      <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex flex-col gap-2">
+                        <p className="text-xs font-bold text-green-700 uppercase tracking-wider mb-1">Datos para transferir</p>
+                        {[
+                          { label: 'Titular', value: TRANSFERENCIA.titular },
+                          { label: 'Banco',   value: TRANSFERENCIA.banco },
+                          { label: 'CBU',     value: TRANSFERENCIA.cbu,   campo: 'cbu' },
+                          { label: 'Alias',   value: TRANSFERENCIA.alias, campo: 'alias' },
+                        ].map(({ label, value, campo }) => (
+                          <div key={label} className="flex items-center justify-between gap-3">
+                            <div>
+                              <p className="text-[11px] text-gray-500">{label}</p>
+                              <p className="text-xs font-bold text-gray-900 font-mono">{value}</p>
+                            </div>
+                            {campo && (
+                              <button onClick={() => copiar(campo)}
+                                className={`text-xs px-2.5 py-1 rounded-lg font-semibold transition-all flex-shrink-0 ${copiado === campo ? 'bg-green-600 text-white' : 'bg-white border border-green-300 text-green-700'}`}>
+                                {copiado === campo ? '✓' : 'Copiar'}
+                              </button>
+                            )}
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                )}
+                    )}
 
-                {tieneDescuento && metodoPago && metodoPago !== 'mercadopago' && (
-                  <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-center gap-2">
-                    <Tag size={13} className="text-green-600" />
-                    <p className="text-sm text-green-700 font-medium">
-                      Ahorrás <strong>{fmt(ahorroTotal)}</strong> pagando con {metodoPago}
+                    {/* Ahorro */}
+                    {tieneDescuento && metodoPago && metodoPago !== 'mercadopago' && metodoPago !== 'payway' && (
+                      <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-center gap-2">
+                        <Tag size={13} className="text-green-600" />
+                        <p className="text-sm text-green-700 font-medium">
+                          Ahorrás <strong>{fmt(ahorroTotal)}</strong> pagando con {metodoPago}
+                        </p>
+                      </div>
+                    )}
+
+                    {error && (
+                      <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+                        <AlertCircle size={15} className="text-red-500 flex-shrink-0" />
+                        <p className="text-sm text-red-600">{error}</p>
+                      </div>
+                    )}
+
+                    <button onClick={confirmar} disabled={loading}
+                      className="w-full bg-[#111] hover:bg-gray-800 disabled:bg-gray-400 text-white font-bold py-4 rounded-xl text-sm transition-colors flex items-center justify-center gap-2">
+                      {loading
+                        ? <><Loader2 size={16} className="animate-spin" /> Procesando...</>
+                        : labelBoton()
+                      }
+                    </button>
+
+                    <p className="text-xs text-gray-400 text-center">
+                      Al confirmar aceptás los términos y condiciones de compra.
                     </p>
-                  </div>
+                  </>
                 )}
-
-                {error && (
-                  <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-                    <AlertCircle size={15} className="text-red-500 flex-shrink-0" />
-                    <p className="text-sm text-red-600">{error}</p>
-                  </div>
-                )}
-
-                <button onClick={confirmar} disabled={loading}
-                  className="w-full bg-[#111] hover:bg-gray-800 disabled:bg-gray-400 text-white font-bold py-4 rounded-xl text-sm transition-colors flex items-center justify-center gap-2">
-                  {loading
-                    ? <><Loader2 size={16} className="animate-spin" /> Procesando...</>
-                    : metodoPago === 'mercadopago'
-                      ? `Pagar con Mercado Pago · ${fmt(total)}`
-                      : `Confirmar pedido · ${fmt(total)}`
-                  }
-                </button>
-
-                <p className="text-xs text-gray-400 text-center">
-                  Al confirmar aceptás los términos y condiciones de compra.
-                </p>
               </div>
             )}
           </div>
 
-          {/* ── Resumen lateral (siempre visible) ── */}
+          {/* ── Resumen lateral ── */}
           <div className="lg:sticky lg:top-6">
             <ResumenLateral
               cart={cart}
