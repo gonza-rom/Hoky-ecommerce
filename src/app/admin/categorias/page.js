@@ -2,13 +2,13 @@
 // src/app/admin/categorias/page.js
 
 import { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, X, Tag, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Tag, Loader2, ChevronRight, FolderOpen } from 'lucide-react';
 
 export default function AdminCategoriasPage() {
   const [categorias, setCategorias] = useState([]);
   const [loading,    setLoading]    = useState(true);
   const [modal,      setModal]      = useState(null);
-  const [form,       setForm]       = useState({ nombre: '', descripcion: '', orden: 0 });
+  const [form,       setForm]       = useState({ nombre: '', descripcion: '', orden: 0, parentId: '' });
   const [guardando,  setGuardando]  = useState(false);
   const [error,      setError]      = useState('');
   const [confirmDel, setConfirmDel] = useState(null);
@@ -25,14 +25,19 @@ export default function AdminCategoriasPage() {
     finally  { setLoading(false); }
   }
 
-  function abrirNuevo() {
-    setForm({ nombre: '', descripcion: '', orden: 0 });
+  function abrirNuevo(parentId = '') {
+    setForm({ nombre: '', descripcion: '', orden: 0, parentId });
     setError('');
     setModal('nuevo');
   }
 
-  function abrirEditar(cat) {
-    setForm({ nombre: cat.nombre, descripcion: cat.descripcion ?? '', orden: cat.orden ?? 0 });
+  function abrirEditar(cat, parentId = '') {
+    setForm({
+      nombre:      cat.nombre,
+      descripcion: cat.descripcion ?? '',
+      orden:       cat.orden ?? 0,
+      parentId:    cat.parentId ?? parentId ?? '',
+    });
     setError('');
     setModal(cat);
   }
@@ -44,7 +49,14 @@ export default function AdminCategoriasPage() {
       const esEdicion = modal !== 'nuevo';
       const res = await fetch(
         esEdicion ? `/api/admin/categorias/${modal.id}` : '/api/admin/categorias',
-        { method: esEdicion ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) }
+        {
+          method:  esEdicion ? 'PUT' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({
+            ...form,
+            parentId: form.parentId || null,
+          }),
+        }
       );
       const data = await res.json();
       if (!data.ok) { setError(data.error ?? 'Error al guardar'); return; }
@@ -62,101 +74,120 @@ export default function AdminCategoriasPage() {
     } catch { alert('Error al eliminar'); }
   }
 
+  // Lista plana de todas las categorías para el select de padre
+  const todasLasCats = categorias.flatMap(c => [c, ...(c.hijos ?? [])]);
+
   return (
     <div>
       {/* Header */}
       <div className="flex items-start justify-between gap-3 mb-6">
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight mb-1">Categorías</h1>
-          <p className="text-sm text-gray-400">{categorias.length} categorías en total</p>
+          <p className="text-sm text-gray-400">
+            {categorias.length} categorías · {categorias.reduce((a, c) => a + (c.hijos?.length ?? 0), 0)} subcategorías
+          </p>
         </div>
-        <button onClick={abrirNuevo}
+        <button onClick={() => abrirNuevo()}
           className="flex items-center gap-2 bg-[#111] text-white px-4 py-2.5 rounded-lg text-sm font-semibold flex-shrink-0 hover:bg-gray-800 transition-colors">
           <Plus size={14} /> <span className="hidden sm:inline">Nueva categoría</span><span className="sm:hidden">Nueva</span>
         </button>
       </div>
 
       {/* Lista */}
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      <div className="flex flex-col gap-3">
         {loading ? (
-          <div className="p-12 text-center">
+          <div className="bg-white border border-gray-200 rounded-xl p-12 text-center">
             <Loader2 size={28} className="text-gray-300 animate-spin mx-auto" />
           </div>
         ) : categorias.length === 0 ? (
-          <div className="p-12 text-center">
+          <div className="bg-white border border-gray-200 rounded-xl p-12 text-center">
             <Tag size={40} className="text-gray-200 mx-auto mb-3" />
             <p className="text-sm text-gray-400">No hay categorías. Creá la primera.</p>
           </div>
         ) : (
-          <>
-            {/* Tabla desktop */}
-            <div className="hidden sm:block overflow-x-auto">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr className="border-b border-gray-100">
-                    {['Nombre', 'Descripción', 'Productos', 'Orden', ''].map(h => (
-                      <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {categorias.map((cat, i) => (
-                    <tr key={cat.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors last:border-0">
-                      <td className="px-4 py-3 font-semibold text-[#111]">{cat.nombre}</td>
-                      <td className="px-4 py-3 text-gray-400 max-w-[200px] truncate">{cat.descripcion || '—'}</td>
-                      <td className="px-4 py-3 text-gray-400">{cat._count?.productos ?? 0} productos</td>
-                      <td className="px-4 py-3 text-gray-400">{cat.orden}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex gap-2 justify-end">
-                          <button onClick={() => abrirEditar(cat)}
-                            className="flex items-center gap-1 px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-500 hover:bg-gray-50 transition-colors">
-                            <Pencil size={11} /> Editar
-                          </button>
-                          <button onClick={() => setConfirmDel(cat)}
-                            className="flex items-center gap-1 px-2.5 py-1.5 border border-red-200 rounded-lg text-xs text-red-500 hover:bg-red-50 transition-colors">
-                            <Trash2 size={11} /> Eliminar
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          categorias.map(cat => (
+            <div key={cat.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
 
-            {/* Cards móvil */}
-            <div className="sm:hidden divide-y divide-gray-100">
-              {categorias.map(cat => (
-                <div key={cat.id} className="p-4 flex items-center justify-between gap-3">
-                  <div className="min-w-0">
+              {/* Categoría raíz */}
+              <div className="flex items-center gap-3 px-4 py-3.5">
+                <FolderOpen size={16} className="text-gray-400 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <p className="font-semibold text-sm text-[#111]">{cat.nombre}</p>
-                    <p className="text-xs text-gray-400">{cat._count?.productos ?? 0} productos · Orden: {cat.orden}</p>
+                    <span className="text-[11px] text-gray-400">
+                      {cat._count?.productos ?? 0} productos
+                      {cat.hijos?.length > 0 && ` · ${cat.hijos.length} subcategorías`}
+                    </span>
                   </div>
-                  <div className="flex gap-2 flex-shrink-0">
-                    <button onClick={() => abrirEditar(cat)}
-                      className="p-2 border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50">
-                      <Pencil size={13} />
-                    </button>
-                    <button onClick={() => setConfirmDel(cat)}
-                      className="p-2 border border-red-200 rounded-lg text-red-500 hover:bg-red-50">
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
+                  {cat.descripcion && (
+                    <p className="text-xs text-gray-400 truncate mt-0.5">{cat.descripcion}</p>
+                  )}
                 </div>
-              ))}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button onClick={() => abrirNuevo(cat.id)}
+                    className="flex items-center gap-1 px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-500 hover:bg-gray-50 transition-colors whitespace-nowrap">
+                    <Plus size={11} /> Sub
+                  </button>
+                  <button onClick={() => abrirEditar(cat)}
+                    className="p-1.5 border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 transition-colors">
+                    <Pencil size={13} />
+                  </button>
+                  <button onClick={() => setConfirmDel(cat)}
+                    className="p-1.5 border border-red-200 rounded-lg text-red-500 hover:bg-red-50 transition-colors">
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Subcategorías */}
+              {cat.hijos?.length > 0 && (
+                <div className="border-t border-gray-100">
+                  {cat.hijos.map((hijo, i) => (
+                    <div key={hijo.id}
+                      className={`flex items-center gap-3 px-4 py-3 bg-gray-50 ${i < cat.hijos.length - 1 ? 'border-b border-gray-100' : ''}`}>
+                      <div className="flex items-center gap-2 pl-4 flex-shrink-0">
+                        <ChevronRight size={12} className="text-gray-300" />
+                        <Tag size={13} className="text-gray-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm text-gray-700 font-medium">{hijo.nombre}</p>
+                          <span className="text-[11px] text-gray-400">{hijo._count?.productos ?? 0} productos</span>
+                        </div>
+                        {hijo.descripcion && (
+                          <p className="text-xs text-gray-400 truncate mt-0.5">{hijo.descripcion}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <button onClick={() => abrirEditar({ ...hijo, parentId: cat.id })}
+                          className="p-1.5 border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors">
+                          <Pencil size={12} />
+                        </button>
+                        <button onClick={() => setConfirmDel(hijo)}
+                          className="p-1.5 border border-red-200 rounded-lg text-red-500 hover:bg-red-50 transition-colors">
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          </>
+          ))
         )}
       </div>
 
-      {/* Modal crear/editar */}
+      {/* ── Modal crear/editar ── */}
       {modal !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
           onClick={() => !guardando && setModal(null)}>
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
               <h2 className="text-base font-bold">
-                {modal === 'nuevo' ? 'Nueva categoría' : `Editar: ${modal.nombre}`}
+                {modal === 'nuevo'
+                  ? form.parentId ? 'Nueva subcategoría' : 'Nueva categoría'
+                  : `Editar: ${modal.nombre}`
+                }
               </h2>
               <button onClick={() => !guardando && setModal(null)} className="text-gray-400 hover:text-gray-600">
                 <X size={18} />
@@ -170,18 +201,39 @@ export default function AdminCategoriasPage() {
                   placeholder="Ej: Remeras"
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm outline-none focus:border-gray-400" />
               </div>
+
               <div>
                 <label className="block text-xs font-semibold text-gray-500 mb-1.5">Descripción</label>
                 <textarea value={form.descripcion} onChange={e => setForm(p => ({ ...p, descripcion: e.target.value }))}
-                  rows={3} placeholder="Descripción opcional..."
+                  rows={2} placeholder="Descripción opcional..."
                   className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm outline-none resize-none focus:border-gray-400" />
               </div>
+
+              {/* Categoría padre */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                  Categoría padre <span className="font-normal text-gray-400">(opcional — si es subcategoría)</span>
+                </label>
+                <select value={form.parentId} onChange={e => setForm(p => ({ ...p, parentId: e.target.value }))}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm outline-none focus:border-gray-400 bg-white">
+                  <option value="">— Categoría raíz —</option>
+                  {categorias
+                    .filter(c => modal === 'nuevo' || c.id !== modal.id)
+                    .map(c => (
+                      <option key={c.id} value={c.id}>{c.nombre}</option>
+                    ))
+                  }
+                </select>
+              </div>
+
               <div>
                 <label className="block text-xs font-semibold text-gray-500 mb-1.5">Orden en el menú</label>
-                <input type="number" value={form.orden} onChange={e => setForm(p => ({ ...p, orden: parseInt(e.target.value) || 0 }))}
+                <input type="number" value={form.orden}
+                  onChange={e => setForm(p => ({ ...p, orden: parseInt(e.target.value) || 0 }))}
                   className="w-24 px-3 py-2.5 border border-gray-200 rounded-lg text-sm outline-none focus:border-gray-400" />
                 <p className="text-[11px] text-gray-400 mt-1">Número menor = aparece primero</p>
               </div>
+
               {error && <p className="text-sm text-red-500">{error}</p>}
             </div>
 
@@ -200,7 +252,7 @@ export default function AdminCategoriasPage() {
         </div>
       )}
 
-      {/* Modal confirmar eliminar */}
+      {/* ── Modal confirmar eliminar ── */}
       {confirmDel && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
           onClick={() => setConfirmDel(null)}>
@@ -209,8 +261,11 @@ export default function AdminCategoriasPage() {
               <Trash2 size={20} className="text-red-500" />
             </div>
             <h3 className="text-base font-bold mb-2">¿Eliminar categoría?</h3>
-            <p className="text-sm text-gray-400 mb-5">
-              Vas a eliminar <strong>{confirmDel.nombre}</strong>. Los productos quedarán sin categoría.
+            <p className="text-sm text-gray-400 mb-1">
+              Vas a eliminar <strong>{confirmDel.nombre}</strong>.
+            </p>
+            <p className="text-xs text-gray-400 mb-5">
+              Los productos quedarán sin categoría y las subcategorías pasarán a ser raíz.
             </p>
             <div className="flex gap-2">
               <button onClick={() => setConfirmDel(null)}

@@ -1,20 +1,32 @@
-// src/app/checkout/page.js
-// CAMBIOS respecto a la versión anterior:
-// - getPrecioItem(): calcula el precio de cada item según el método de pago
-// - El subtotal, total y resumen se recalculan cuando cambia el metodoPago
-// - Se muestra badge de ahorro cuando el método tiene descuento
 'use client';
+// src/app/checkout/page.js
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   ArrowLeft, ShoppingBag, MapPin, Truck, CheckCircle,
-  Loader2, AlertCircle, ChevronDown, ChevronUp, Copy, Check, Info, Tag,
+  Loader2, AlertCircle, ChevronRight, Store, Package,
+  CreditCard, Banknote, Building2, Tag, X,
 } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { createClient } from '@/lib/supabase/client';
 import { calcularEnvio, PROVINCIAS_AR, ENVIO_GRATIS_DESDE } from '@/lib/envio';
+
+const DESCUENTO_DEFAULT = 10;
+
+function getPrecioItem(item, metodoPago) {
+  if (metodoPago === 'efectivo' || metodoPago === 'transferencia') {
+    if (item.precioEfectivo) return item.precioEfectivo;
+    const descuento = item.descuentoEfectivo ?? DESCUENTO_DEFAULT;
+    return Math.round(item.precio * (1 - descuento / 100));
+  }
+  return item.precio;
+}
+
+const fmt = (n) => new Intl.NumberFormat('es-AR', {
+  style: 'currency', currency: 'ARS', minimumFractionDigits: 2,
+}).format(n ?? 0);
 
 const TRANSFERENCIA = {
   titular: 'Hoky Indumentaria',
@@ -23,42 +35,144 @@ const TRANSFERENCIA = {
   alias:   'HOKY.INDUMENTARIA',
 };
 
-const WA_NUMBER = '5493834644467';
-
-// ── Helpers de precio ─────────────────────────────────────────
-const DESCUENTO_DEFAULT = 10;
-
-function getPrecioItem(item, metodoPago) {
-  if (metodoPago === 'efectivo' || metodoPago === 'transferencia') {
-    // Si el item tiene precio con descuento guardado, usarlo
-    if (item.precioEfectivo) return item.precioEfectivo;
-    // Si no, calcular con el descuento del producto o el default
-    const descuento = item.descuentoEfectivo ?? DESCUENTO_DEFAULT;
-    return Math.round(item.precio * (1 - descuento / 100));
-  }
-  return item.precio; // tarjeta / MP = precio base
+// ── Barra de pasos ────────────────────────────────────────────────────────────
+function StepBar({ paso }) {
+  const pasos = ['Contacto', 'Entrega', 'Pago'];
+  return (
+    <div className="flex items-center gap-0 mb-8">
+      {pasos.map((label, i) => {
+        const num    = i + 1;
+        const activo = paso === num;
+        const hecho  = paso > num;
+        return (
+          <div key={label} className="flex items-center flex-1 last:flex-none">
+            <div className="flex items-center gap-2">
+              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all ${
+                hecho  ? 'bg-[#111] border-[#111] text-white' :
+                activo ? 'bg-white border-[#111] text-[#111]' :
+                         'bg-white border-gray-300 text-gray-400'
+              }`}>
+                {hecho ? <CheckCircle size={14} /> : num}
+              </div>
+              <span className={`text-xs font-semibold hidden sm:block ${activo ? 'text-[#111]' : hecho ? 'text-[#111]' : 'text-gray-400'}`}>
+                {label}
+              </span>
+            </div>
+            {i < pasos.length - 1 && (
+              <div className={`flex-1 h-px mx-3 ${paso > num ? 'bg-[#111]' : 'bg-gray-200'}`} />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
-function getDescuentoItem(item) {
-  return item.descuentoEfectivo ?? DESCUENTO_DEFAULT;
+// ── Resumen lateral ───────────────────────────────────────────────────────────
+function ResumenLateral({ cart, subtotal, costoEnvio, total, tipoEnvio, infoEnvio, metodoPago, ahorroTotal, tieneDescuento }) {
+  const [cuponInput, setCuponInput] = useState('');
+  const [mostrarCupon, setMostrarCupon] = useState(false);
+
+  return (
+    <div className="bg-gray-50 border border-gray-200 rounded-2xl overflow-hidden">
+      {/* Productos */}
+      <div className="p-5 flex flex-col gap-3 max-h-64 overflow-y-auto">
+        {cart.map(item => {
+          const precioFinal = getPrecioItem(item, metodoPago);
+          return (
+            <div key={item.id} className="flex items-start gap-3">
+              <div className="relative flex-shrink-0">
+                {item.imagen
+                  ? <img src={item.imagen} alt={item.nombre} className="w-12 h-12 rounded-lg object-cover border border-gray-200" />
+                  : <div className="w-12 h-12 rounded-lg bg-gray-200 flex items-center justify-center"><ShoppingBag size={14} className="text-gray-400" /></div>
+                }
+                <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-gray-500 text-white text-[10px] font-bold flex items-center justify-center">
+                  {item.cantidad}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900 truncate">{item.nombre}</p>
+                {(item.talle || item.color) && (
+                  <p className="text-xs text-gray-400">{[item.talle && `T: ${item.talle}`, item.color].filter(Boolean).join(' · ')}</p>
+                )}
+              </div>
+              <p className="text-sm font-semibold text-gray-900 flex-shrink-0">{fmt(precioFinal * item.cantidad)}</p>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="border-t border-gray-200" />
+
+      {/* Cupón */}
+      <div className="px-5 py-3">
+        {!mostrarCupon ? (
+          <button onClick={() => setMostrarCupon(true)}
+            className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-800 transition-colors">
+            <Tag size={14} />
+            Agregar cupón de descuento
+          </button>
+        ) : (
+          <div className="flex gap-2">
+            <input value={cuponInput} onChange={e => setCuponInput(e.target.value)}
+              placeholder="Código de cupón" autoFocus
+              className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-gray-400" />
+            <button className="px-3 py-2 bg-[#111] text-white text-sm font-semibold rounded-lg">Aplicar</button>
+            <button onClick={() => setMostrarCupon(false)} className="p-2 text-gray-400 hover:text-gray-600"><X size={14} /></button>
+          </div>
+        )}
+      </div>
+
+      <div className="border-t border-gray-200" />
+
+      {/* Totales */}
+      <div className="p-5 flex flex-col gap-2">
+        <div className="flex justify-between text-sm text-gray-600">
+          <span>Subtotal</span>
+          <span>{fmt(subtotal)}</span>
+        </div>
+        {tieneDescuento && metodoPago && metodoPago !== 'mercadopago' && (
+          <div className="flex justify-between text-sm text-green-600 font-medium">
+            <span>Descuento ({metodoPago})</span>
+            <span>- {fmt(ahorroTotal)}</span>
+          </div>
+        )}
+        <div className="flex justify-between text-sm text-gray-600">
+          <span>Envío</span>
+          <span className={costoEnvio === 0 && tipoEnvio ? 'text-green-600 font-medium' : ''}>
+            {!tipoEnvio ? 'Calculando...' :
+             tipoEnvio === 'retiro' ? 'Retiro gratis' :
+             infoEnvio?.gratis ? '¡Gratis!' :
+             infoEnvio?.disponible ? fmt(infoEnvio.precio) :
+             'A calcular'}
+          </span>
+        </div>
+        <div className="flex justify-between text-base font-bold text-gray-900 pt-2 border-t border-gray-200 mt-1">
+          <span>Total</span>
+          <span>{fmt(total)}</span>
+        </div>
+      </div>
+    </div>
+  );
 }
 
+// ── Checkout principal ────────────────────────────────────────────────────────
 export default function CheckoutPage() {
   const router   = useRouter();
   const { cart, clearCart } = useCart();
   const supabase = createClient();
-
   const pedidoConfirmado = useRef(false);
 
-  const [user,       setUser]       = useState(null);
-  const [loading,    setLoading]    = useState(false);
-  const [error,      setError]      = useState('');
-  const [tipoEnvio,  setTipoEnvio]  = useState('retiro');
+  const [paso,      setPaso]      = useState(1); // 1, 2, 3
+  const [user,      setUser]      = useState(null);
+  const [loading,   setLoading]   = useState(false);
+  const [error,     setError]     = useState('');
+  const [infoEnvio, setInfoEnvio] = useState(null);
+
+  const [tipoEnvio,  setTipoEnvio]  = useState('');
   const [metodoPago, setMetodoPago] = useState('');
   const [errores,    setErrores]    = useState({});
-  const [resumenAbierto, setResumenAbierto] = useState(false);
   const [copiado,    setCopiado]    = useState('');
-  const [infoEnvio,  setInfoEnvio]  = useState(null);
 
   const [form, setForm] = useState({
     nombre: '', email: '', telefono: '',
@@ -70,15 +184,12 @@ export default function CheckoutPage() {
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       setUser(user);
-      if (user) {
-        setForm(prev => ({
-          ...prev,
-          nombre: user.user_metadata?.nombre ?? user.user_metadata?.full_name ?? '',
-          email:  user.email ?? '',
-        }));
-      }
+      if (user) setForm(prev => ({
+        ...prev,
+        nombre: user.user_metadata?.nombre ?? user.user_metadata?.full_name ?? '',
+        email:  user.email ?? '',
+      }));
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -91,29 +202,17 @@ export default function CheckoutPage() {
     } else {
       setInfoEnvio(null);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.provincia, tipoEnvio, metodoPago]);
+  }, [form.provincia, tipoEnvio]);
 
-  // ── Cálculo de totales según método de pago ───────────────
+  // ── Cálculo de totales ────────────────────────────────────
   const { subtotal, ahorroTotal, tieneDescuento } = useMemo(() => {
-    const sub = cart.reduce((acc, item) => {
-      const precioFinal = getPrecioItem(item, metodoPago);
-      return acc + precioFinal * item.cantidad;
-    }, 0);
-    const subSinDescuento = cart.reduce((acc, item) => acc + item.precio * item.cantidad, 0);
-    const ahorro = subSinDescuento - sub;
-    return {
-      subtotal:       sub,
-      ahorroTotal:    ahorro,
-      tieneDescuento: ahorro > 0,
-    };
+    const sub = cart.reduce((acc, item) => acc + getPrecioItem(item, metodoPago) * item.cantidad, 0);
+    const sinDesc = cart.reduce((acc, item) => acc + item.precio * item.cantidad, 0);
+    return { subtotal: sub, ahorroTotal: sinDesc - sub, tieneDescuento: sinDesc - sub > 0 };
   }, [cart, metodoPago]);
 
-  const costoEnvioFinal = tipoEnvio === 'retiro'
-    ? 0
-    : (infoEnvio?.disponible ? infoEnvio.precio : 0);
-
-  const total = subtotal + costoEnvioFinal;
+  const costoEnvio = tipoEnvio === 'retiro' ? 0 : (infoEnvio?.disponible ? infoEnvio.precio : 0);
+  const total      = subtotal + costoEnvio;
 
   function copiar(campo) {
     const valor = campo === 'cbu' ? TRANSFERENCIA.cbu : TRANSFERENCIA.alias;
@@ -123,30 +222,52 @@ export default function CheckoutPage() {
     });
   }
 
-  function validar() {
+  // ── Validaciones por paso ─────────────────────────────────
+  function validarPaso1() {
     const e = {};
-    if (!form.nombre.trim())   e.nombre   = 'Requerido';
     if (!form.email.trim())    e.email    = 'Requerido';
     if (!/\S+@\S+\.\S+/.test(form.email)) e.email = 'Email inválido';
+    if (!form.codigoPostal.trim()) e.codigoPostal = 'Requerido';
+    setErrores(e);
+    return Object.keys(e).length === 0;
+  }
+
+  function validarPaso2() {
+    const e = {};
+    if (!tipoEnvio) e.tipoEnvio = 'Seleccioná una opción de entrega';
+    if (!form.nombre.trim())   e.nombre   = 'Requerido';
     if (!form.telefono.trim()) e.telefono = 'Requerido';
     if (tipoEnvio === 'envio') {
-      if (!form.calle.trim())        e.calle        = 'Requerido';
-      if (!form.ciudad.trim())       e.ciudad       = 'Requerido';
-      if (!form.provincia)           e.provincia    = 'Requerido';
-      if (!form.codigoPostal.trim()) e.codigoPostal = 'Requerido';
-      if (infoEnvio && !infoEnvio.disponible) e.provincia = 'Provincia no reconocida';
+      if (!form.calle.trim())   e.calle    = 'Requerido';
+      if (!form.ciudad.trim())  e.ciudad   = 'Requerido';
+      if (!form.provincia)      e.provincia = 'Requerido';
     }
+    setErrores(e);
+    return Object.keys(e).length === 0;
+  }
+
+  function validarPaso3() {
+    const e = {};
     if (!metodoPago) e.metodoPago = 'Seleccioná un método de pago';
     setErrores(e);
     return Object.keys(e).length === 0;
   }
 
-  async function handleSubmit(e) {
-    e.preventDefault();
-    if (!validar()) return;
-    setLoading(true);
-    setError('');
+  function irAPaso2() {
+    if (validarPaso1()) {
+      // Pre-calcular envío con el CP ingresado
+      if (form.codigoPostal) setTipoEnvio('');
+      setPaso(2);
+    }
+  }
 
+  function irAPaso3() {
+    if (validarPaso2()) setPaso(3);
+  }
+
+  async function confirmar() {
+    if (!validarPaso3()) return;
+    setLoading(true); setError('');
     try {
       const payload = {
         items: cart.map(item => {
@@ -155,7 +276,7 @@ export default function CheckoutPage() {
             productoId: item.id.includes('-') ? item.id.split('-')[0] : item.id,
             varianteId: item.varianteId ?? null,
             nombre:     item.nombre,
-            precio:     precioFinal,          // precio efectivo según método
+            precio:     precioFinal,
             cantidad:   item.cantidad,
             subtotal:   precioFinal * item.cantidad,
             talle:      item.talle  ?? null,
@@ -163,11 +284,8 @@ export default function CheckoutPage() {
             imagen:     item.imagen ?? null,
           };
         }),
-        subtotal,
-        costoEnvio: costoEnvioFinal,
-        total,
-        metodoPago,
-        tipoEnvio,
+        subtotal, costoEnvio, total,
+        metodoPago, tipoEnvio,
         compradorNombre:   form.nombre.trim(),
         compradorEmail:    form.email.trim(),
         compradorTelefono: form.telefono.trim(),
@@ -186,16 +304,12 @@ export default function CheckoutPage() {
       };
 
       const res  = await fetch('/api/checkout', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify(payload),
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
       });
       const data = await res.json();
-
       if (!data.ok) { setError(data.error ?? 'Error al procesar el pedido'); return; }
 
       pedidoConfirmado.current = true;
-
       if (metodoPago === 'mercadopago' && data.mpInitPoint) {
         clearCart();
         window.location.href = data.mpInitPoint;
@@ -203,473 +317,345 @@ export default function CheckoutPage() {
         clearCart();
         router.push(`/checkout/exito?pedido=${data.pedidoId}&metodo=${metodoPago}`);
       }
-    } catch {
-      setError('Error de conexión. Intentá de nuevo.');
-    } finally {
-      setLoading(false);
-    }
+    } catch { setError('Error de conexión. Intentá de nuevo.'); }
+    finally  { setLoading(false); }
   }
 
   if (cart.length === 0 && !pedidoConfirmado.current) return null;
 
+  const inp = (err) => `w-full px-3 py-2.5 border ${err ? 'border-red-300' : 'border-gray-200'} rounded-lg text-sm outline-none focus:border-gray-400 bg-white`;
+
   return (
-    <div style={{ minHeight: '100vh', background: '#f5f4f2', fontFamily: "'Inter', sans-serif" }}>
-
-      <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .co-grid {
-          max-width: 1100px; margin: 0 auto;
-          padding: 24px 16px;
-          display: grid; grid-template-columns: 1fr; gap: 20px;
-        }
-        @media (min-width: 900px) {
-          .co-grid { grid-template-columns: 1fr 360px; padding: 32px 24px; gap: 32px; }
-        }
-        .co-sticky { position: static; }
-        @media (min-width: 900px) { .co-sticky { position: sticky; top: 24px; } }
-        .co-g2 { display: grid; grid-template-columns: 1fr; gap: 12px; }
-        @media (min-width: 480px) { .co-g2 { grid-template-columns: 1fr 1fr; } }
-        .co-toggle { display: flex; }
-        @media (min-width: 900px) { .co-toggle { display: none; } }
-        .co-resumen-mobile { display: none; }
-        .co-resumen-mobile.open { display: block; }
-        @media (min-width: 900px) { .co-resumen-mobile { display: block !important; } }
-      `}</style>
-
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div style={{ background: '#fff', borderBottom: '1px solid #e8e5e0', padding: '14px 16px' }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Link href="/" style={{ textDecoration: 'none' }}>
-            <span style={{ fontSize: 17, fontWeight: 900, letterSpacing: '0.12em', color: '#111', textTransform: 'uppercase' }}>HOKY</span>
-          </Link>
-          <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#888' }}>Checkout</span>
-          <Link href="/productos" style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#888', textDecoration: 'none' }}>
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
+          <Link href="/" className="text-lg font-black tracking-widest uppercase text-[#111] no-underline">HOKY</Link>
+          <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Checkout</span>
+          <Link href="/productos" className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-700 no-underline">
             <ArrowLeft size={13} /> Volver
           </Link>
         </div>
       </div>
 
-      <div className="co-grid">
+      <div className="max-w-5xl mx-auto px-4 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-8 items-start">
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* ── Columna izquierda ── */}
+          <div>
+            <StepBar paso={paso} />
 
-          {/* Toggle resumen móvil */}
-          <div className="co-toggle">
-            <button type="button" onClick={() => setResumenAbierto(!resumenAbierto)} style={{
-              width: '100%', background: '#fff', border: '1px solid #e8e5e0', borderRadius: 12,
-              padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              fontSize: 13, fontWeight: 600, cursor: 'pointer',
-            }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <ShoppingBag size={15} />
-                {resumenAbierto ? 'Ocultar resumen' : `Ver resumen (${cart.reduce((a, i) => a + i.cantidad, 0)} productos)`}
-              </span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <strong>${total.toLocaleString('es-AR')}</strong>
-                {resumenAbierto ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-              </span>
-            </button>
-          </div>
+            {/* ══ PASO 1: Contacto ══ */}
+            {paso === 1 && (
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 flex flex-col gap-5">
+                <h2 className="text-base font-bold text-gray-900">Datos de contacto</h2>
 
-          <div className={`co-resumen-mobile ${resumenAbierto ? 'open' : ''}`}>
-            <div style={{ background: '#fff', border: '1px solid #e8e5e0', borderRadius: 12, overflow: 'hidden' }}>
-              <ResumenItems cart={cart} subtotal={subtotal} costoEnvioFinal={costoEnvioFinal}
-                tipoEnvio={tipoEnvio} total={total} infoEnvio={infoEnvio}
-                metodoPago={metodoPago} ahorroTotal={ahorroTotal} tieneDescuento={tieneDescuento} />
-            </div>
-          </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">E-mail *</label>
+                  <input type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
+                    placeholder="tu@email.com" className={inp(errores.email)} />
+                  {errores.email && <p className="text-xs text-red-500 mt-1">{errores.email}</p>}
+                </div>
 
-          {/* 1. Datos */}
-          <Section titulo="1. Tus datos">
-            <div className="co-g2">
-              <Campo label="Nombre completo *" error={errores.nombre}>
-                <input value={form.nombre} onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))}
-                  placeholder="Juan Pérez" style={inp(errores.nombre)} />
-              </Campo>
-              <Campo label="Teléfono / WhatsApp *" error={errores.telefono}>
-                <input value={form.telefono} onChange={e => setForm(p => ({ ...p, telefono: e.target.value }))}
-                  placeholder="+54 9 383 000-0000" style={inp(errores.telefono)} />
-              </Campo>
-            </div>
-            <Campo label="Email *" error={errores.email}>
-              <input type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
-                placeholder="tu@email.com" style={inp(errores.email)} />
-            </Campo>
-          </Section>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" className="w-4 h-4 rounded" />
+                  <span className="text-sm text-gray-600">Quiero recibir ofertas y novedades por e-mail</span>
+                </label>
 
-          {/* 2. Entrega */}
-          <Section titulo="2. Entrega">
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <OpcionCard activo={tipoEnvio === 'retiro'} onClick={() => { setTipoEnvio('retiro'); setInfoEnvio(null); }}
-                icon={<MapPin size={18} />} titulo="Retiro en local"
-                desc="Esquiú 620, Catamarca" badge="Gratis" badgeColor="#16a34a" />
-              <OpcionCard activo={tipoEnvio === 'envio'} onClick={() => setTipoEnvio('envio')}
-                icon={<Truck size={18} />} titulo="Envío a domicilio"
-                desc="Calculamos según tu provincia" />
-            </div>
+                <div className="border-t border-gray-100 pt-4">
+                  <h3 className="text-sm font-bold text-gray-900 mb-3">Entrega</h3>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1.5">Código Postal *</label>
+                    <div className="flex gap-2">
+                      <input value={form.codigoPostal} onChange={e => setForm(p => ({ ...p, codigoPostal: e.target.value }))}
+                        placeholder="Ej: 4700" className={`${inp(errores.codigoPostal)} max-w-[160px]`} />
+                      <button className="text-xs text-blue-500 hover:text-blue-700 font-medium whitespace-nowrap">
+                        No sé mi CP
+                      </button>
+                    </div>
+                    {errores.codigoPostal && <p className="text-xs text-red-500 mt-1">{errores.codigoPostal}</p>}
+                  </div>
+                </div>
 
-            {tipoEnvio === 'retiro' && (
-              <div style={{ background: '#f7f4f0', borderRadius: 10, padding: '12px 14px' }}>
-                <p style={{ fontSize: 13, fontWeight: 700, color: '#111', margin: '0 0 2px' }}>📍 Dónde retirás</p>
-                <p style={{ fontSize: 12, color: '#666', margin: 0 }}>Esquiú 620 (antes de Rivadavia), Catamarca</p>
-                <p style={{ fontSize: 11, color: '#888', margin: '3px 0 0' }}>Lun–Sáb: 9:00–13:30 / 18:00–22:00 hs</p>
+                <button onClick={irAPaso2}
+                  className="w-full bg-[#111] hover:bg-gray-800 text-white font-bold py-3.5 rounded-xl text-sm transition-colors">
+                  Continuar
+                </button>
               </div>
             )}
 
-            {tipoEnvio === 'envio' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <Campo label="Calle *" error={errores.calle}>
-                  <input value={form.calle} onChange={e => setForm(p => ({ ...p, calle: e.target.value }))}
-                    placeholder="Av. Belgrano" style={inp(errores.calle)} />
-                </Campo>
-                <div className="co-g2">
-                  <Campo label="Número">
-                    <input value={form.numero} onChange={e => setForm(p => ({ ...p, numero: e.target.value }))}
-                      placeholder="1234" style={inp()} />
-                  </Campo>
-                  <Campo label="Piso / Depto">
-                    <input value={form.piso} onChange={e => setForm(p => ({ ...p, piso: e.target.value }))}
-                      placeholder="3° B" style={inp()} />
-                  </Campo>
+            {/* ══ PASO 2: Entrega ══ */}
+            {paso === 2 && (
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 flex flex-col gap-5">
+                {/* Resumen contacto */}
+                <div className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
+                  <div>
+                    <p className="text-xs text-gray-400">Contacto</p>
+                    <p className="text-sm font-medium text-gray-900">{form.email}</p>
+                  </div>
+                  <button onClick={() => setPaso(1)} className="text-xs font-semibold text-blue-500 hover:text-blue-700">Cambiar</button>
                 </div>
-                <div className="co-g2">
-                  <Campo label="Ciudad *" error={errores.ciudad}>
-                    <input value={form.ciudad} onChange={e => setForm(p => ({ ...p, ciudad: e.target.value }))}
-                      placeholder="San Fernando del V. C." style={inp(errores.ciudad)} />
-                  </Campo>
-                  <Campo label="Provincia *" error={errores.provincia}>
-                    <select value={form.provincia} onChange={e => setForm(p => ({ ...p, provincia: e.target.value }))}
-                      style={{ ...inp(errores.provincia), background: '#fff' }}>
-                      <option value="">Seleccioná tu provincia</option>
-                      {PROVINCIAS_AR.map(prov => <option key={prov} value={prov}>{prov}</option>)}
-                    </select>
-                  </Campo>
+
+                <div className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
+                  <div>
+                    <p className="text-xs text-gray-400">Enviar a</p>
+                    <p className="text-sm font-medium text-gray-900">CP {form.codigoPostal}</p>
+                  </div>
+                  <button onClick={() => setPaso(1)} className="text-xs font-semibold text-blue-500 hover:text-blue-700">Cambiar</button>
                 </div>
-                <Campo label="Código Postal *" error={errores.codigoPostal}>
-                  <input value={form.codigoPostal} onChange={e => setForm(p => ({ ...p, codigoPostal: e.target.value }))}
-                    placeholder="4700" style={{ ...inp(errores.codigoPostal), maxWidth: 160 }} />
-                </Campo>
-                {infoEnvio && (
-                  <div style={{
-                    borderRadius: 10, padding: '14px 16px',
-                    background: infoEnvio.gratis ? '#f0fdf4' : infoEnvio.disponible ? '#eff6ff' : '#fff5f5',
-                    border: `1px solid ${infoEnvio.gratis ? '#bbf7d0' : infoEnvio.disponible ? '#bfdbfe' : '#fecaca'}`,
-                    display: 'flex', alignItems: 'flex-start', gap: 10,
-                  }}>
-                    <span style={{ fontSize: 18, flexShrink: 0 }}>
-                      {infoEnvio.gratis ? '🎉' : infoEnvio.disponible ? '🚚' : '❌'}
-                    </span>
+
+                <h2 className="text-base font-bold text-gray-900">Datos personales</h2>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1.5">Nombre completo *</label>
+                    <input value={form.nombre} onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))}
+                      placeholder="Juan Pérez" className={inp(errores.nombre)} />
+                    {errores.nombre && <p className="text-xs text-red-500 mt-1">{errores.nombre}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1.5">Teléfono / WhatsApp *</label>
+                    <input value={form.telefono} onChange={e => setForm(p => ({ ...p, telefono: e.target.value }))}
+                      placeholder="+54 9 383 000-0000" className={inp(errores.telefono)} />
+                    {errores.telefono && <p className="text-xs text-red-500 mt-1">{errores.telefono}</p>}
+                  </div>
+                </div>
+
+                <div className="border-t border-gray-100 pt-4">
+                  <h3 className="text-sm font-bold text-gray-900 mb-3">Método de entrega</h3>
+                  {errores.tipoEnvio && <p className="text-xs text-red-500 mb-2">{errores.tipoEnvio}</p>}
+
+                  <div className="flex flex-col gap-2">
+                    {/* Retiro */}
+                    <label className={`flex items-start gap-3 p-4 border-2 rounded-xl cursor-pointer transition-all ${tipoEnvio === 'retiro' ? 'border-[#111] bg-gray-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                      <input type="radio" name="entrega" value="retiro" checked={tipoEnvio === 'retiro'} onChange={() => setTipoEnvio('retiro')} className="mt-0.5" />
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Store size={15} className="text-gray-500" />
+                            <span className="text-sm font-semibold text-gray-900">Retirar en local</span>
+                          </div>
+                          <span className="text-sm font-bold text-green-600">Gratis</span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1 ml-5">Esquiú 620, Catamarca · Lun–Sáb 9–13:30 / 18–22hs</p>
+                      </div>
+                    </label>
+
+                    {/* Envío */}
+                    <label className={`flex items-start gap-3 p-4 border-2 rounded-xl cursor-pointer transition-all ${tipoEnvio === 'envio' ? 'border-[#111] bg-gray-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                      <input type="radio" name="entrega" value="envio" checked={tipoEnvio === 'envio'} onChange={() => setTipoEnvio('envio')} className="mt-0.5" />
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Truck size={15} className="text-gray-500" />
+                            <span className="text-sm font-semibold text-gray-900">Envío a domicilio</span>
+                          </div>
+                          {infoEnvio?.disponible && (
+                            <span className="text-sm font-bold text-gray-900">
+                              {infoEnvio.gratis ? 'Gratis' : fmt(infoEnvio.precio)}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1 ml-5">Se calcula según tu provincia</p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Dirección — solo si elige envío */}
+                {tipoEnvio === 'envio' && (
+                  <div className="flex flex-col gap-3 border-t border-gray-100 pt-4">
+                    <h3 className="text-sm font-bold text-gray-900">Dirección de entrega</h3>
                     <div>
-                      <p style={{
-                        fontSize: 13, fontWeight: 700, margin: '0 0 2px',
-                        color: infoEnvio.gratis ? '#15803d' : infoEnvio.disponible ? '#1d4ed8' : '#dc2626',
-                      }}>
-                        {infoEnvio.gratis
-                          ? `¡Envío gratis a ${infoEnvio.zona.nombre}!`
-                          : infoEnvio.disponible
-                            ? `Envío a ${infoEnvio.zona.nombre}: $${infoEnvio.precio.toLocaleString('es-AR')}`
-                            : 'Provincia no encontrada'
-                        }
-                      </p>
-                      {infoEnvio.disponible && (
-                        <p style={{ fontSize: 12, color: '#555', margin: 0 }}>
-                          ⏱ {infoEnvio.diasMin}–{infoEnvio.diasMax} días hábiles estimados
-                        </p>
-                      )}
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">Calle *</label>
+                      <input value={form.calle} onChange={e => setForm(p => ({ ...p, calle: e.target.value }))}
+                        placeholder="Av. Belgrano" className={inp(errores.calle)} />
+                      {errores.calle && <p className="text-xs text-red-500 mt-1">{errores.calle}</p>}
                     </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-500 mb-1.5">Número</label>
+                        <input value={form.numero} onChange={e => setForm(p => ({ ...p, numero: e.target.value }))}
+                          placeholder="1234" className={inp()} />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-500 mb-1.5">Piso / Depto</label>
+                        <input value={form.piso} onChange={e => setForm(p => ({ ...p, piso: e.target.value }))}
+                          placeholder="3° B" className={inp()} />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-500 mb-1.5">Ciudad *</label>
+                        <input value={form.ciudad} onChange={e => setForm(p => ({ ...p, ciudad: e.target.value }))}
+                          placeholder="San Fernando del V. C." className={inp(errores.ciudad)} />
+                        {errores.ciudad && <p className="text-xs text-red-500 mt-1">{errores.ciudad}</p>}
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-500 mb-1.5">Provincia *</label>
+                        <select value={form.provincia} onChange={e => setForm(p => ({ ...p, provincia: e.target.value }))}
+                          className={inp(errores.provincia) + ' bg-white'}>
+                          <option value="">Seleccioná</option>
+                          {PROVINCIAS_AR.map(p => <option key={p} value={p}>{p}</option>)}
+                        </select>
+                        {errores.provincia && <p className="text-xs text-red-500 mt-1">{errores.provincia}</p>}
+                      </div>
+                    </div>
+
+                    {/* Info envío calculado */}
+                    {infoEnvio && (
+                      <div className={`rounded-xl p-3 flex items-start gap-2 ${infoEnvio.disponible ? infoEnvio.gratis ? 'bg-green-50 border border-green-200' : 'bg-blue-50 border border-blue-200' : 'bg-red-50 border border-red-200'}`}>
+                        <span className="text-base">{infoEnvio.gratis ? '🎉' : infoEnvio.disponible ? '🚚' : '❌'}</span>
+                        <div>
+                          <p className={`text-sm font-semibold ${infoEnvio.gratis ? 'text-green-700' : infoEnvio.disponible ? 'text-blue-700' : 'text-red-600'}`}>
+                            {infoEnvio.gratis ? `¡Envío gratis a ${infoEnvio.zona?.nombre}!` :
+                             infoEnvio.disponible ? `Envío a ${infoEnvio.zona?.nombre}: ${fmt(infoEnvio.precio)}` :
+                             'Provincia no disponible'}
+                          </p>
+                          {infoEnvio.disponible && (
+                            <p className="text-xs text-gray-500 mt-0.5">{infoEnvio.diasMin}–{infoEnvio.diasMax} días hábiles</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
-              </div>
-            )}
-          </Section>
 
-          {/* 3. Método de pago */}
-          <Section titulo="3. Método de pago">
-            {errores.metodoPago && (
-              <p style={{ fontSize: 12, color: '#ef4444', margin: '0 0 8px' }}>{errores.metodoPago}</p>
-            )}
-
-            {/* Badge de ahorro — se muestra si hay descuento disponible */}
-            {cart.some(item => (item.descuentoEfectivo ?? DESCUENTO_DEFAULT) > 0) && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '10px 14px' }}>
-                <Tag size={14} color="#15803d" />
-                <p style={{ fontSize: 12, color: '#15803d', margin: 0, fontWeight: 600 }}>
-                  Pagando en efectivo o transferencia ahorras hasta{' '}
-                  <strong>
-                    {Math.max(...cart.map(i => i.descuentoEfectivo ?? DESCUENTO_DEFAULT))}%
-                  </strong>
-                </p>
-              </div>
-            )}
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <OpcionPago activo={metodoPago === 'mercadopago'} onClick={() => setMetodoPago('mercadopago')}
-                icon="💳" titulo="Mercado Pago" desc="Tarjeta, débito, efectivo en puntos de pago"
-                badge={null} />
-              <OpcionPago activo={metodoPago === 'transferencia'} onClick={() => setMetodoPago('transferencia')}
-                icon="🏦" titulo="Transferencia bancaria"
-                desc="Transferí y envianos el comprobante por WhatsApp"
-                badge={`${Math.max(...cart.map(i => i.descuentoEfectivo ?? DESCUENTO_DEFAULT))}% OFF`}
-                badgeColor="#15803d" />
-              <OpcionPago activo={metodoPago === 'efectivo'} onClick={() => setMetodoPago('efectivo')}
-                icon="💵" titulo="Efectivo"
-                desc={tipoEnvio === 'retiro' ? 'Al retirar en el local' : 'Al recibir el pedido'}
-                badge={`${Math.max(...cart.map(i => i.descuentoEfectivo ?? DESCUENTO_DEFAULT))}% OFF`}
-                badgeColor="#15803d" />
-            </div>
-
-            {/* Datos de transferencia */}
-            {metodoPago === 'transferencia' && (
-              <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 12, padding: '16px', marginTop: 4 }}>
-                <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#15803d', margin: '0 0 12px' }}>
-                  🏦 Datos para la transferencia
-                </p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <DatoTransferencia label="Titular" valor={TRANSFERENCIA.titular} />
-                  <DatoTransferencia label="Banco"   valor={TRANSFERENCIA.banco} />
-                  <DatoTransferencia label="CBU"     valor={TRANSFERENCIA.cbu}
-                    onCopiar={() => copiar('cbu')} copiado={copiado === 'cbu'} />
-                  <DatoTransferencia label="Alias"   valor={TRANSFERENCIA.alias}
-                    onCopiar={() => copiar('alias')} copiado={copiado === 'alias'} />
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">Notas del pedido (opcional)</label>
+                  <textarea value={form.notas} onChange={e => setForm(p => ({ ...p, notas: e.target.value }))}
+                    rows={2} placeholder="Aclaraciones, horario preferido..." className={inp() + ' resize-none'} />
                 </div>
+
+                <button onClick={irAPaso3}
+                  className="w-full bg-[#111] hover:bg-gray-800 text-white font-bold py-3.5 rounded-xl text-sm transition-colors">
+                  Continuar al pago
+                </button>
               </div>
             )}
 
-            {/* Resumen del ahorro cuando hay descuento activo */}
-            {tieneDescuento && metodoPago && metodoPago !== 'mercadopago' && (
-              <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Tag size={14} color="#15803d" />
-                <p style={{ fontSize: 13, color: '#15803d', margin: 0, fontWeight: 600 }}>
-                  ¡Estás ahorrando <strong>${ahorroTotal.toLocaleString('es-AR')}</strong> pagando con {metodoPago === 'efectivo' ? 'efectivo' : 'transferencia'}!
-                </p>
-              </div>
-            )}
-          </Section>
-
-          {/* 4. Notas */}
-          <Section titulo="4. Notas (opcional)">
-            <textarea value={form.notas} onChange={e => setForm(p => ({ ...p, notas: e.target.value }))}
-              placeholder="Aclaraciones, horario de entrega preferido, etc."
-              rows={3} style={{ ...inp(), resize: 'none' }} />
-          </Section>
-
-          {error && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#fff5f5', border: '1px solid #fecaca', borderRadius: 10, padding: '12px 16px' }}>
-              <AlertCircle size={16} color="#ef4444" />
-              <p style={{ fontSize: 13, color: '#dc2626', margin: 0 }}>{error}</p>
-            </div>
-          )}
-
-          <button type="submit" disabled={loading} style={{
-            width: '100%', padding: '16px', background: loading ? '#555' : '#111',
-            color: '#fff', border: 'none', borderRadius: 10,
-            fontSize: 15, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-          }}>
-            {loading
-              ? <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> Procesando...</>
-              : metodoPago === 'mercadopago'
-                ? <>💳 Pagar con Mercado Pago — ${total.toLocaleString('es-AR')}</>
-                : <><CheckCircle size={18} /> Confirmar pedido — ${total.toLocaleString('es-AR')}</>
-            }
-          </button>
-
-          <p style={{ fontSize: 11, color: '#aaa', textAlign: 'center', margin: 0 }}>
-            Los tiempos de entrega son estimados y pueden variar.
-          </p>
-        </form>
-
-        {/* ── Resumen desktop ── */}
-        <div className="co-sticky">
-          <div style={{ background: '#fff', border: '1px solid #e8e5e0', borderRadius: 16, overflow: 'hidden' }}>
-            <div style={{ padding: '18px 20px 14px', borderBottom: '1px solid #f0ede8' }}>
-              <p style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#888', margin: 0 }}>
-                Tu pedido
-              </p>
-            </div>
-            <ResumenItems cart={cart} subtotal={subtotal} costoEnvioFinal={costoEnvioFinal}
-              tipoEnvio={tipoEnvio} total={total} infoEnvio={infoEnvio}
-              metodoPago={metodoPago} ahorroTotal={ahorroTotal} tieneDescuento={tieneDescuento} />
-          </div>
-        </div>
-
-      </div>
-    </div>
-  );
-}
-
-// ── Resumen items ─────────────────────────────────────────────
-function ResumenItems({ cart, subtotal, costoEnvioFinal, tipoEnvio, total, infoEnvio, metodoPago, ahorroTotal, tieneDescuento }) {
-  const DESCUENTO_DEFAULT = 10;
-  return (
-    <>
-      <div style={{ padding: '14px 20px', display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 280, overflowY: 'auto' }}>
-        {cart.map(item => {
-          const precioFinal = getPrecioItem(item, metodoPago);
-          const tieneDesc   = precioFinal < item.precio;
-          return (
-            <div key={item.id} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-              <div style={{ position: 'relative', flexShrink: 0 }}>
-                {item.imagen
-                  ? <img src={item.imagen} alt={item.nombre} style={{ width: 48, height: 48, borderRadius: 8, objectFit: 'cover', border: '1px solid #f0ede8' }} />
-                  : <div style={{ width: 48, height: 48, borderRadius: 8, background: '#f5f4f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <ShoppingBag size={14} color="#ccc" />
-                    </div>
-                }
-                <span style={{
-                  position: 'absolute', top: -5, right: -5,
-                  width: 16, height: 16, borderRadius: '50%',
-                  background: '#111', color: '#fff', fontSize: 9, fontWeight: 700,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>{item.cantidad}</span>
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: 12, fontWeight: 600, color: '#111', margin: '0 0 1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.nombre}</p>
-                {(item.talle || item.color) && (
-                  <p style={{ fontSize: 11, color: '#aaa', margin: '0 0 1px' }}>
-                    {[item.talle && `T: ${item.talle}`, item.color].filter(Boolean).join(' · ')}
-                  </p>
-                )}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <p style={{ fontSize: 12, fontWeight: 700, color: '#111', margin: 0 }}>
-                    ${(precioFinal * item.cantidad).toLocaleString('es-AR')}
-                  </p>
-                  {tieneDesc && (
-                    <p style={{ fontSize: 11, color: '#aaa', textDecoration: 'line-through', margin: 0 }}>
-                      ${(item.precio * item.cantidad).toLocaleString('es-AR')}
+            {/* ══ PASO 3: Pago ══ */}
+            {paso === 3 && (
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 flex flex-col gap-5">
+                {/* Resumen entrega */}
+                <div className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
+                  <div>
+                    <p className="text-xs text-gray-400">Contacto</p>
+                    <p className="text-sm font-medium text-gray-900">{form.email}</p>
+                  </div>
+                  <button onClick={() => setPaso(1)} className="text-xs font-semibold text-blue-500 hover:text-blue-700">Cambiar</button>
+                </div>
+                <div className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
+                  <div>
+                    <p className="text-xs text-gray-400">{tipoEnvio === 'retiro' ? 'Retiro en local' : 'Envío a domicilio'}</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {tipoEnvio === 'retiro' ? 'Esquiú 620, Catamarca' : `${form.calle} ${form.numero}, ${form.ciudad}`}
                     </p>
-                  )}
+                  </div>
+                  <button onClick={() => setPaso(2)} className="text-xs font-semibold text-blue-500 hover:text-blue-700">Cambiar</button>
                 </div>
+
+                <h2 className="text-base font-bold text-gray-900">Método de pago</h2>
+                {errores.metodoPago && <p className="text-xs text-red-500">{errores.metodoPago}</p>}
+
+                <div className="flex flex-col gap-2">
+                  {[
+                    { id: 'mercadopago',  icon: CreditCard,  label: 'Mercado Pago',          desc: 'Tarjeta, débito, efectivo en puntos de pago', badge: null },
+                    { id: 'transferencia',icon: Building2,    label: 'Transferencia bancaria', desc: 'Transferí y envianos el comprobante', badge: `${Math.max(...cart.map(i => i.descuentoEfectivo ?? DESCUENTO_DEFAULT))}% OFF` },
+                    { id: 'efectivo',     icon: Banknote,     label: 'Efectivo',              desc: tipoEnvio === 'retiro' ? 'Al retirar en el local' : 'Al recibir el pedido', badge: `${Math.max(...cart.map(i => i.descuentoEfectivo ?? DESCUENTO_DEFAULT))}% OFF` },
+                  ].map(({ id, icon: Icon, label, desc, badge }) => (
+                    <label key={id} className={`flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer transition-all ${metodoPago === id ? 'border-[#111] bg-gray-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                      <input type="radio" name="pago" value={id} checked={metodoPago === id} onChange={() => setMetodoPago(id)} />
+                      <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                        <Icon size={16} className="text-gray-600" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-gray-900">{label}</span>
+                          {badge && <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{badge}</span>}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-0.5">{desc}</p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+
+                {/* Datos de transferencia */}
+                {metodoPago === 'transferencia' && (
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex flex-col gap-2">
+                    <p className="text-xs font-bold text-green-700 uppercase tracking-wider mb-1">Datos para transferir</p>
+                    {[
+                      { label: 'Titular', value: TRANSFERENCIA.titular },
+                      { label: 'Banco',   value: TRANSFERENCIA.banco },
+                      { label: 'CBU',     value: TRANSFERENCIA.cbu,   campo: 'cbu' },
+                      { label: 'Alias',   value: TRANSFERENCIA.alias, campo: 'alias' },
+                    ].map(({ label, value, campo }) => (
+                      <div key={label} className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-[11px] text-gray-500">{label}</p>
+                          <p className="text-xs font-bold text-gray-900 font-mono">{value}</p>
+                        </div>
+                        {campo && (
+                          <button onClick={() => copiar(campo)}
+                            className={`text-xs px-2.5 py-1 rounded-lg font-semibold transition-all flex-shrink-0 ${copiado === campo ? 'bg-green-600 text-white' : 'bg-white border border-green-300 text-green-700'}`}>
+                            {copiado === campo ? '✓' : 'Copiar'}
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {tieneDescuento && metodoPago && metodoPago !== 'mercadopago' && (
+                  <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-center gap-2">
+                    <Tag size={13} className="text-green-600" />
+                    <p className="text-sm text-green-700 font-medium">
+                      Ahorrás <strong>{fmt(ahorroTotal)}</strong> pagando con {metodoPago}
+                    </p>
+                  </div>
+                )}
+
+                {error && (
+                  <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+                    <AlertCircle size={15} className="text-red-500 flex-shrink-0" />
+                    <p className="text-sm text-red-600">{error}</p>
+                  </div>
+                )}
+
+                <button onClick={confirmar} disabled={loading}
+                  className="w-full bg-[#111] hover:bg-gray-800 disabled:bg-gray-400 text-white font-bold py-4 rounded-xl text-sm transition-colors flex items-center justify-center gap-2">
+                  {loading
+                    ? <><Loader2 size={16} className="animate-spin" /> Procesando...</>
+                    : metodoPago === 'mercadopago'
+                      ? `Pagar con Mercado Pago · ${fmt(total)}`
+                      : `Confirmar pedido · ${fmt(total)}`
+                  }
+                </button>
+
+                <p className="text-xs text-gray-400 text-center">
+                  Al confirmar aceptás los términos y condiciones de compra.
+                </p>
               </div>
-            </div>
-          );
-        })}
-      </div>
-
-      <div style={{ padding: '12px 20px', borderTop: '1px solid #f0ede8', display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#888' }}>
-          <span>Subtotal</span><span>${subtotal.toLocaleString('es-AR')}</span>
-        </div>
-        {tieneDescuento && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#15803d', fontWeight: 600 }}>
-            <span>🏷 Descuento {metodoPago}</span>
-            <span>- ${ahorroTotal.toLocaleString('es-AR')}</span>
+            )}
           </div>
-        )}
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#888' }}>
-          <span>Envío</span>
-          <span style={{ color: costoEnvioFinal === 0 && tipoEnvio === 'envio' ? '#16a34a' : '#555' }}>
-            {tipoEnvio === 'retiro'
-              ? 'Retiro gratis'
-              : infoEnvio?.disponible
-                ? infoEnvio.gratis ? '¡Gratis!' : `$${infoEnvio.precio.toLocaleString('es-AR')}`
-                : 'Seleccioná provincia'
-            }
-          </span>
-        </div>
-        {infoEnvio?.disponible && (
-          <p style={{ fontSize: 11, color: '#aaa', margin: 0, textAlign: 'right' }}>
-            ⏱ {infoEnvio.diasMin}–{infoEnvio.diasMax} días hábiles
-          </p>
-        )}
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 15, fontWeight: 800, color: '#111', paddingTop: 8, borderTop: '1px solid #f0ede8', marginTop: 2 }}>
-          <span>Total</span><span>${total.toLocaleString('es-AR')}</span>
-        </div>
-      </div>
-    </>
-  );
-}
 
-function DatoTransferencia({ label, valor, onCopiar, copiado }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-      <div style={{ minWidth: 0 }}>
-        <span style={{ fontSize: 11, color: '#888', display: 'block' }}>{label}</span>
-        <span style={{ fontSize: 13, fontWeight: 700, color: '#111', fontFamily: 'monospace', wordBreak: 'break-all' }}>{valor}</span>
+          {/* ── Resumen lateral (siempre visible) ── */}
+          <div className="lg:sticky lg:top-6">
+            <ResumenLateral
+              cart={cart}
+              subtotal={subtotal}
+              costoEnvio={costoEnvio}
+              total={total}
+              tipoEnvio={tipoEnvio}
+              infoEnvio={infoEnvio}
+              metodoPago={metodoPago}
+              ahorroTotal={ahorroTotal}
+              tieneDescuento={tieneDescuento}
+            />
+          </div>
+
+        </div>
       </div>
-      {onCopiar && (
-        <button type="button" onClick={onCopiar} style={{
-          flexShrink: 0, display: 'flex', alignItems: 'center', gap: 4,
-          padding: '5px 10px', border: '1px solid #bbf7d0', borderRadius: 6,
-          background: copiado ? '#16a34a' : '#fff', cursor: 'pointer',
-          fontSize: 11, fontWeight: 600, color: copiado ? '#fff' : '#16a34a',
-        }}>
-          {copiado ? <Check size={12} /> : <Copy size={12} />}
-          {copiado ? 'Copiado' : 'Copiar'}
-        </button>
-      )}
     </div>
   );
 }
-
-function Section({ titulo, children }) {
-  return (
-    <div style={{ background: '#fff', border: '1px solid #e8e5e0', borderRadius: 12, padding: '20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <p style={{ fontSize: 13, fontWeight: 800, color: '#111', margin: 0 }}>{titulo}</p>
-      {children}
-    </div>
-  );
-}
-
-function Campo({ label, error, children }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-      <label style={{ fontSize: 12, fontWeight: 600, color: '#555' }}>{label}</label>
-      {children}
-      {error && <p style={{ fontSize: 11, color: '#ef4444', margin: 0 }}>{error}</p>}
-    </div>
-  );
-}
-
-function OpcionCard({ activo, onClick, icon, titulo, desc, badge, badgeColor }) {
-  return (
-    <button type="button" onClick={onClick} style={{
-      padding: '12px', border: `2px solid ${activo ? '#111' : '#e0dbd5'}`,
-      borderRadius: 10, background: activo ? '#111' : '#fff',
-      cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-        <span style={{ color: activo ? '#fff' : '#555' }}>{icon}</span>
-        {badge && <span style={{ fontSize: 9, fontWeight: 700, background: badgeColor, color: '#fff', padding: '2px 5px', borderRadius: 4, textTransform: 'uppercase' }}>{badge}</span>}
-      </div>
-      <p style={{ fontSize: 12, fontWeight: 700, color: activo ? '#fff' : '#111', margin: '0 0 2px' }}>{titulo}</p>
-      <p style={{ fontSize: 11, color: activo ? 'rgba(255,255,255,0.65)' : '#888', margin: 0 }}>{desc}</p>
-    </button>
-  );
-}
-
-function OpcionPago({ activo, onClick, icon, titulo, desc, badge, badgeColor }) {
-  return (
-    <button type="button" onClick={onClick} style={{
-      padding: '12px 14px', border: `2px solid ${activo ? '#111' : '#e0dbd5'}`,
-      borderRadius: 10, background: activo ? '#fafaf8' : '#fff',
-      cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12,
-      transition: 'all 0.15s',
-    }}>
-      <div style={{ width: 36, height: 36, borderRadius: 8, background: activo ? '#111' : '#f5f4f2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, flexShrink: 0 }}>
-        {icon}
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-          <p style={{ fontSize: 13, fontWeight: 700, color: '#111', margin: 0 }}>{titulo}</p>
-          {badge && (
-            <span style={{ fontSize: 9, fontWeight: 700, background: badgeColor, color: '#fff', padding: '2px 6px', borderRadius: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              {badge}
-            </span>
-          )}
-        </div>
-        <p style={{ fontSize: 11, color: '#888', margin: 0 }}>{desc}</p>
-      </div>
-      <div style={{ width: 18, height: 18, borderRadius: '50%', border: `2px solid ${activo ? '#111' : '#ddd'}`, background: activo ? '#111' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        {activo && <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#fff' }} />}
-      </div>
-    </button>
-  );
-}
-
-const inp = (error) => ({
-  width: '100%', padding: '10px 12px',
-  border: `1px solid ${error ? '#fca5a5' : '#e0dbd5'}`,
-  borderRadius: 8, fontSize: 13, outline: 'none',
-  boxSizing: 'border-box', color: '#111', background: '#fff',
-});

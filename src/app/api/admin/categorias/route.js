@@ -6,9 +6,20 @@ import { revalidateTag } from "next/cache";
 export async function GET() {
   try {
     const categorias = await prisma.categoria.findMany({
-      where:   { activo: true },
-      select:  { id: true, nombre: true, descripcion: true, imagen: true, orden: true,
-        _count: { select: { productos: { where: { activo: true } } } } },
+      where:   { activo: true, parentId: null }, // solo categorías raíz
+      select:  {
+        id: true, nombre: true, descripcion: true,
+        imagen: true, orden: true,
+        _count: { select: { productos: { where: { activo: true } } } },
+        hijos: {
+          where:  { activo: true },
+          select: {
+            id: true, nombre: true, descripcion: true, orden: true,
+            _count: { select: { productos: { where: { activo: true } } } },
+          },
+          orderBy: { orden: 'asc' },
+        },
+      },
       orderBy: { orden: "asc" },
     });
     return NextResponse.json({ ok: true, data: categorias });
@@ -20,12 +31,18 @@ export async function GET() {
 
 export async function POST(req) {
   try {
-    const { nombre, descripcion, imagen, orden } = await req.json();
+    const { nombre, descripcion, imagen, orden, parentId } = await req.json();
     if (!nombre?.trim())
       return NextResponse.json({ ok: false, error: "El nombre es requerido" }, { status: 400 });
 
     const categoria = await prisma.categoria.create({
-      data: { nombre: nombre.trim(), descripcion: descripcion?.trim() || null, imagen: imagen || null, orden: orden ?? 0 },
+      data: {
+        nombre:      nombre.trim(),
+        descripcion: descripcion?.trim() || null,
+        imagen:      imagen || null,
+        orden:       orden ?? 0,
+        parentId:    parentId || null,
+      },
     });
     revalidateTag("categorias");
     return NextResponse.json({ ok: true, data: categoria }, { status: 201 });

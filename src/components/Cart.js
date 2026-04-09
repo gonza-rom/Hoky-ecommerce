@@ -1,9 +1,11 @@
 'use client';
 
-import { X, Plus, Minus, Trash2, ShoppingBag } from 'lucide-react';
+import { X, Plus, Minus, Trash2, ShoppingBag, Truck } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
+
+const ENVIO_GRATIS_DESDE = 150000;
 
 export default function Cart() {
   const {
@@ -17,6 +19,16 @@ export default function Cart() {
   } = useCart();
 
   if (!isOpen) return null;
+
+  const total    = getTotal();
+  const falta    = Math.max(0, ENVIO_GRATIS_DESDE - total);
+  const progreso = Math.min((total / ENVIO_GRATIS_DESDE) * 100, 100);
+  const gratis   = total >= ENVIO_GRATIS_DESDE;
+
+  const fmt = (n) =>
+    new Intl.NumberFormat('es-AR', {
+      style: 'currency', currency: 'ARS', maximumFractionDigits: 0,
+    }).format(n);
 
   return (
     <>
@@ -41,6 +53,47 @@ export default function Cart() {
           >
             <X size={20} />
           </button>
+        </div>
+
+        {/* ── Banner envío gratis ── */}
+        <div style={{
+          padding: '10px 14px',
+          background: gratis ? '#f0fdf4' : '#fafaf8',
+          borderBottom: `1px solid ${gratis ? '#bbf7d0' : '#f0ede8'}`,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Truck size={13} color={gratis ? '#16a34a' : '#888'} />
+              {gratis ? (
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#16a34a' }}>
+                  ¡Envío gratis desbloqueado!
+                </span>
+              ) : (
+                <span style={{ fontSize: 14, color: '#555' }}>
+                  Agregá <strong style={{ color: '#111' }}>{fmt(falta)}</strong> para envío gratis
+                </span>
+              )}
+            </div>
+            <span style={{ fontSize: 13, color: '#000000ff' }}>{fmt(ENVIO_GRATIS_DESDE)}</span>
+          </div>
+
+          {/* Barra de progreso */}
+          <div style={{
+            height: 5,
+            background: '#e5e7eb',
+            borderRadius: 99,
+            overflow: 'hidden',
+          }}>
+            <div style={{
+              height: '100%',
+              width: `${progreso}%`,
+              background: gratis
+                ? 'linear-gradient(90deg, #16a34a, #22c55e)'
+                : 'linear-gradient(90deg, #111, #444)',
+              borderRadius: 99,
+              transition: 'width 0.4s ease',
+            }} />
+          </div>
         </div>
 
         {/* Items */}
@@ -121,11 +174,22 @@ export default function Cart() {
         {cart.length > 0 && (
           <div style={{ borderTop: '1px solid #f0ede8', padding: 16, background: '#fafaf8', display: 'flex', flexDirection: 'column', gap: 10 }}>
 
+            {/* Envío */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, color: '#888' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <Truck size={13} />
+                Envío
+              </span>
+              <span style={{ fontWeight: 600, color: gratis ? '#16a34a' : '#888' }}>
+                {gratis ? 'Gratis' : 'Se calcula al finalizar'}
+              </span>
+            </div>
+
             {/* Total */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: 15, fontWeight: 700, color: '#111' }}>Total</span>
               <span style={{ fontSize: 18, fontWeight: 900, color: '#111' }}>
-                ${getTotal().toLocaleString('es-AR')}
+                ${total.toLocaleString('es-AR')}
               </span>
             </div>
 
@@ -150,7 +214,7 @@ export default function Cart() {
                   const varInfo = [item.talle && `T: ${item.talle}`, item.color].filter(Boolean).join(' ');
                   return `${i + 1}. *${item.nombre}*${varInfo ? ` (${varInfo})` : ''} x${item.cantidad} — $${(item.precio * item.cantidad).toLocaleString('es-AR')}`;
                 }).join('\n');
-                const msg = `¡Hola! Quiero hacer este pedido:\n\n${items}\n\n*Total: $${getTotal().toLocaleString('es-AR')}*\n\n¿Pueden confirmar disponibilidad?`;
+                const msg = `¡Hola! Quiero hacer este pedido:\n\n${items}\n\n*Total: $${total.toLocaleString('es-AR')}*\n\n¿Pueden confirmar disponibilidad?`;
                 window.open(`https://wa.me/5493834644467?text=${encodeURIComponent(msg)}`, '_blank');
               }}
               style={{
@@ -166,7 +230,6 @@ export default function Cart() {
               Consultar por WhatsApp
             </button>
 
-            {/* Vaciar carrito — ahora solo llama clearCart(), el toast lo maneja el contexto */}
             <button
               onClick={clearCart}
               style={{ background: 'transparent', border: 'none', fontSize: 12, color: '#aaa', cursor: 'pointer', padding: '4px 0' }}

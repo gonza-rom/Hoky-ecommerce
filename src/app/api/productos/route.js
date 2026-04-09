@@ -1,7 +1,4 @@
-// ══════════════════════════════════════════════════════════════
 // src/app/api/productos/route.js
-// API pública — tienda online Hoky (sin tenantId)
-// ══════════════════════════════════════════════════════════════
 import { NextResponse } from "next/server";
 import { prisma }       from "@/lib/prisma";
 
@@ -48,8 +45,11 @@ export async function GET(request) {
     const limit      = limitParam ? parseInt(limitParam) : null;
     const destacados = searchParams.get("destacados") === "true";
 
-    const precioMin  = searchParams.get("precioMin") !== null ? parseFloat(searchParams.get("precioMin")) : null;
-    const precioMax  = searchParams.get("precioMax") !== null ? parseFloat(searchParams.get("precioMax")) : null;
+    // Nuevos filtros
+    const tallesFiltro  = searchParams.get("talles")?.split(",").filter(Boolean) || [];
+    const coloresFiltro = searchParams.get("colores")?.split(",").filter(Boolean) || [];
+    const precioMin     = searchParams.get("precioMin") ? parseFloat(searchParams.get("precioMin")) : null;
+    const precioMax     = searchParams.get("precioMax") ? parseFloat(searchParams.get("precioMax")) : null;
 
     // ── Rango de precios ──────────────────────────────────────
     if (searchParams.get("rangoPrecios") === "true") {
@@ -69,6 +69,18 @@ export async function GET(request) {
         min: Math.floor(minR?.precio ?? 0),
         max: Math.ceil(maxR?.precio  ?? 100000),
       });
+    }
+
+    // ── Talles y colores disponibles ──────────────────────────
+    if (searchParams.get("opciones") === "true") {
+      const variantes = await prisma.productoVariante.findMany({
+        where: { activo: true, stock: { gt: 0 } },
+        select: { talle: true, color: true },
+        distinct: ["talle", "color"],
+      });
+      const talles  = [...new Set(variantes.map(v => v.talle).filter(Boolean))].sort();
+      const colores = [...new Set(variantes.map(v => v.color).filter(Boolean))].sort();
+      return Response.json({ talles, colores });
     }
 
     // ── WHERE ─────────────────────────────────────────────────
@@ -92,6 +104,27 @@ export async function GET(request) {
       if (precioMax !== null) where.precio.lte = precioMax;
     }
 
+    // Filtro por talle y/o color via variantes
+    if (tallesFiltro.length > 0 || coloresFiltro.length > 0) {
+      const varianteWhere = { activo: true, stock: { gt: 0 } };
+      if (tallesFiltro.length > 0)  varianteWhere.talle = { in: tallesFiltro };
+      if (coloresFiltro.length > 0) varianteWhere.color = { in: coloresFiltro, mode: "insensitive" };
+
+      const variantesMatch = await prisma.productoVariante.findMany({
+        where: varianteWhere,
+        select: { productoId: true },
+        distinct: ["productoId"],
+      });
+      const ids = variantesMatch.map(v => v.productoId);
+      if (ids.length === 0) {
+        return Response.json({
+          productos: [],
+          pagination: { page, pageSize, total: 0, totalPages: 0, hasNext: false, hasPrev: false },
+        });
+      }
+      where.id = excludeId ? { in: ids, not: excludeId } : { in: ids };
+    }
+
     // ── ORDER BY ──────────────────────────────────────────────
     let orderBy = [{ imagen: { sort: "desc", nulls: "last" } }, { createdAt: "desc" }];
     if (ordenar === "precio-asc")  orderBy = [{ precio: "asc"  }];
@@ -101,9 +134,13 @@ export async function GET(request) {
 
     const include = {
       categoria: { select: { id: true, nombre: true } },
+      variantes: {
+        where: { activo: true, stock: { gt: 0 } },
+        select: { id: true, talle: true, color: true, stock: true, precio: true },
+      },
     };
 
-    // ── Sin paginación (limit o destacados) ───────────────────
+    // ── Sin paginación ────────────────────────────────────────
     if (limit || (destacados && !searchParams.get("page"))) {
       const productos = await prisma.producto.findMany({
         where, include, orderBy, take: limit ?? 8,

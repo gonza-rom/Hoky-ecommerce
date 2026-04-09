@@ -9,7 +9,6 @@ function toNull(value) {
   return s === "" ? null : s;
 }
 
-// ── GET /api/admin/productos ───────────────────────────────────
 export async function GET(req) {
   try {
     const { searchParams } = new URL(req.url);
@@ -26,11 +25,27 @@ export async function GET(req) {
     const where = { activo: true };
 
     if (stockBajo) where.stock = { lte: 1 };
+
+    // ── Filtro por categoría: incluye subcategorías ──────────
     if (categoriaId === "sin-categoria") {
       where.categoriaId = { equals: null };
     } else if (categoriaId) {
-      where.categoriaId = categoriaId;
+      // Buscar si la categoría tiene hijos
+      const cat = await prisma.categoria.findFirst({
+        where:  { id: categoriaId },
+        select: { id: true, hijos: { select: { id: true } } },
+      });
+
+      if (cat?.hijos?.length > 0) {
+        // Es una categoría raíz con subcategorías → incluir ella + sus hijos
+        const ids = [categoriaId, ...cat.hijos.map(h => h.id)];
+        where.categoriaId = { in: ids };
+      } else {
+        // Es una subcategoría o categoría sin hijos → filtro exacto
+        where.categoriaId = categoriaId;
+      }
     }
+
     if (busqueda.trim()) {
       where.OR = [
         { nombre:         { contains: busqueda, mode: "insensitive" } },
@@ -57,7 +72,7 @@ export async function GET(req) {
           imagen: true, imagenes: true,
           activo: true, destacado: true, tieneVariantes: true,
           categoriaId: true,
-          categoria: { select: { id: true, nombre: true } },
+          categoria: { select: { id: true, nombre: true, parentId: true } },
           createdAt: true,
         },
         orderBy, skip, take: pageSize,
@@ -79,14 +94,12 @@ export async function GET(req) {
   }
 }
 
-// ── POST /api/admin/productos ──────────────────────────────────
 export async function POST(req) {
   try {
     const body = await req.json();
     const {
       nombre, descripcion, precio, precioAnterior, costo,
-      descuentoEfectivo,
-      stock, stockMinimo, unidad,
+      descuentoEfectivo, stock, stockMinimo, unidad,
       imagen, imagenes, categoriaId,
       codigoBarras, codigoProducto,
       destacado = false, tieneVariantes = false,
@@ -155,13 +168,11 @@ export async function POST(req) {
           })),
         });
       }
-
       return p;
     });
 
     revalidateTag("productos");
     revalidateTag("categorias");
-
     return NextResponse.json({ ok: true, data: producto }, { status: 201 });
   } catch (error) {
     if (error.code === "P2002") {
