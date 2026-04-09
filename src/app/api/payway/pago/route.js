@@ -1,5 +1,4 @@
 // src/app/api/payway/pago/route.js
-// Tokeniza con SDK Node (tokenización interna) y procesa el pago
 
 import { NextResponse } from 'next/server';
 
@@ -11,13 +10,9 @@ async function getSDK() {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const {
-      pedidoId, compradorEmail, total,
-      installments, paymentMethodId, bin,
-      cardData, // { card_number, expiration_date, card_holder, security_code, account_number, email_holder }
-    } = body;
+    const { pedidoId, token, bin, paymentMethodId, installments, total, compradorEmail } = body;
 
-    if (!pedidoId || !total || !cardData) {
+    if (!pedidoId || !token || !total) {
       return NextResponse.json({ ok: false, error: 'Datos incompletos' }, { status: 400 });
     }
 
@@ -25,53 +20,19 @@ export async function POST(request) {
     const ambiente   = process.env.PAYWAY_ENVIRONMENT || 'production';
     const publicKey  = process.env.PAYWAY_PUBLIC_KEY;
     const privateKey = process.env.PAYWAY_PRIVATE_KEY;
-    const siteId     = process.env.PAYWAY_SITE_ID || '93021573';
 
     const sdk = new sdkModulo.sdk(ambiente, publicKey, privateKey, 'Hoky', 'HokyEcommerce');
 
-    // Paso 1: Tokenización interna con los datos de tarjeta
-    const tokenArgs = {
-      card_data: {
-        card_number:     cardData.card_number,
-        expiration_date: cardData.expiration_date, // MMAA ej: "1230"
-        card_holder:     cardData.card_holder,
-        security_code:   cardData.security_code,
-        account_number:  cardData.account_number || cardData.card_number,
-        email_holder:    cardData.email_holder || compradorEmail || 'comprador@hoky.com',
-      },
-      establishment_number: siteId,
-    };
+    // Según la doc: amount es double con dos decimales (ej: 25.50), NO en centavos
+    const amount = Math.round(total * 100) / 100;
 
-    console.log('Payway tokenización interna...');
-
-    const tokenResult = await new Promise((resolve, reject) => {
-      sdk.internaltokens(tokenArgs, (data, err) => {
-        if (err && err !== '') return reject(new Error(JSON.stringify(err)));
-        resolve(data);
-      });
-    });
-
-    console.log('Token result:', JSON.stringify(tokenResult));
-
-    const token = tokenResult?.id || tokenResult?.token;
-
-    if (!token) {
-      return NextResponse.json(
-        { ok: false, error: 'No se pudo tokenizar la tarjeta', raw: tokenResult },
-        { status: 400 }
-      );
-    }
-
-    // Paso 2: Ejecutar el pago con el token
-    const amountCentavos = Math.round(total * 100);
-
-    const pagoArgs = {
+    const args = {
       site_transaction_id: pedidoId,
       token,
       user_id:            compradorEmail || 'guest',
       payment_method_id:  paymentMethodId || 1,
-      bin:                bin || cardData.card_number.slice(0, 6),
-      amount:             amountCentavos,
+      bin:                bin || '',
+      amount,
       currency:           'ARS',
       installments:       installments || 1,
       description:        `Pedido Hoky #${pedidoId}`,
@@ -79,29 +40,29 @@ export async function POST(request) {
       sub_payments:       [],
     };
 
-    console.log('Payway pago args:', JSON.stringify(pagoArgs));
+    console.log('Payway pago args:', JSON.stringify(args));
 
-    const pagoResult = await new Promise((resolve, reject) => {
-      sdk.payment(pagoArgs, (data, err) => {
+    const result = await new Promise((resolve, reject) => {
+      sdk.payment(args, (data, err) => {
         if (err && err !== '') return reject(new Error(JSON.stringify(err)));
         resolve(data);
       });
     });
 
-    console.log('Payway pago result:', JSON.stringify(pagoResult));
+    console.log('Payway pago result:', JSON.stringify(result));
 
-    const status = pagoResult?.status?.toLowerCase();
+    const status = result?.status?.toLowerCase();
 
     if (status === 'approved') {
-      return NextResponse.json({ ok: true, status: 'approved', paymentId: pagoResult.id });
+      return NextResponse.json({ ok: true, status: 'approved', paymentId: result.id });
     }
 
     if (status === 'rejected') {
-      const motivo = pagoResult.status_details?.error?.reason?.description || 'Pago rechazado por el banco';
+      const motivo = result.status_details?.error?.reason?.description || 'Pago rechazado por el banco';
       return NextResponse.json({ ok: false, status: 'rejected', error: motivo }, { status: 402 });
     }
 
-    return NextResponse.json({ ok: true, status: status || 'pending', paymentId: pagoResult.id });
+    return NextResponse.json({ ok: true, status: status || 'pending', paymentId: result.id });
 
   } catch (error) {
     console.error('Error Payway pago:', error);

@@ -1,9 +1,7 @@
 // src/components/PaywayForm.js
-// Formulario de tarjeta — los datos van al backend que tokeniza con SDK Node
-// Sin SDK JS de Decidir, sin dependencias externas en el frontend
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { CreditCard, Lock, Loader2, AlertCircle } from 'lucide-react';
 
 function detectarTarjeta(numero) {
@@ -30,15 +28,41 @@ const fmt = (n) => new Intl.NumberFormat('es-AR', {
 }).format(n ?? 0);
 
 export default function PaywayForm({ total, pedidoId, compradorEmail, onSuccess, onError }) {
-  const [numero,  setNumero]  = useState('');
-  const [nombre,  setNombre]  = useState('');
-  const [vto,     setVto]     = useState('');
-  const [cvv,     setCvv]     = useState('');
-  const [cuotas,  setCuotas]  = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState('');
+  const [numero,   setNumero]   = useState('');
+  const [nombre,   setNombre]   = useState('');
+  const [vto,      setVto]      = useState('');
+  const [cvv,      setCvv]      = useState('');
+  const [docTipo,  setDocTipo]  = useState('dni');
+  const [docNum,   setDocNum]   = useState('');
+  const [cuotas,   setCuotas]   = useState(1);
+  const [loading,  setLoading]  = useState(false);
+  const [error,    setError]    = useState('');
+  const [sdkListo, setSdkListo] = useState(false);
+  const formRef = useRef(null);
 
-  const tarjeta = detectarTarjeta(numero);
+  const tarjeta   = detectarTarjeta(numero);
+  const bin       = numero.replace(/\s/g, '').slice(0, 6);
+  const publicKey = process.env.NEXT_PUBLIC_PAYWAY_PUBLIC_KEY;
+  const isProd    = process.env.NEXT_PUBLIC_PAYWAY_ENVIRONMENT === 'production';
+
+  // URLs correctas según la doc oficial de Payway
+  const urlPayway = isProd
+    ? 'https://ventasonline.payway.com.ar/api/v2'
+    : 'https://developers-ventasonline.payway.com.ar/api/v2';
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (window.Decidir) { setSdkListo(true); return; }
+    if (document.getElementById('payway-sdk')) return;
+
+    // Script oficial de Payway Ventas Online
+    const script    = document.createElement('script');
+    script.id       = 'payway-sdk';
+    script.src      = 'https://ventasonline.payway.com.ar/static/v2.6.4/decidir.js';
+    script.onload   = () => setSdkListo(true);
+    script.onerror  = () => setError('No se pudo cargar el SDK de Payway');
+    document.head.appendChild(script);
+  }, []);
 
   async function pagar(e) {
     e.preventDefault();
@@ -49,33 +73,44 @@ export default function PaywayForm({ total, pedidoId, compradorEmail, onSuccess,
     if (!nombre.trim())         { setError('Ingresá el nombre del titular'); return; }
     if (vto.length < 5)         { setError('Fecha de vencimiento inválida'); return; }
     if (cvv.length < 3)         { setError('Código de seguridad inválido'); return; }
+    if (!docNum.trim())         { setError('Ingresá tu número de documento'); return; }
+    if (!sdkListo || !window.Decidir) { setError('SDK de Payway no disponible, recargá la página'); return; }
 
     setLoading(true);
 
     try {
-      // vto viene como MM/AA → convertir a MMAA
-      const [mes, anio] = vto.split('/');
-      const expDate = `${mes}${anio}`; // ej: "1230"
+      const token = await new Promise((resolve, reject) => {
+        // inhabilitarCS = true → desactiva Cybersource (evita el llamado a frauddetectionconf)
+        const inhabilitarCS = true;
+        const decidir = new window.Decidir(urlPayway, inhabilitarCS);
+        decidir.setPublishableKey(publicKey);
+        decidir.setTimeout(10000);
 
+        decidir.createToken(formRef.current, (status, response) => {
+          console.log('Payway token status:', status, JSON.stringify(response));
+          if (status === 200 || status === 201) {
+            resolve(response.id);
+          } else {
+            const errores = Array.isArray(response)
+              ? response.map(e => e.error?.message || e.param).join(', ')
+              : response?.error_type || response?.message || `Error ${status}`;
+            reject(new Error(errores));
+          }
+        });
+      });
+
+      // Enviar token al backend para procesar el pago
       const res = await fetch('/api/payway/pago', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           pedidoId,
-          compradorEmail,
-          total,
-          installments:    cuotas,
+          token,
+          bin,
           paymentMethodId: tarjeta?.id || 1,
-          bin:             numLimpio.slice(0, 6),
-          // datos de tarjeta — el backend los tokeniza con SDK Node
-          cardData: {
-            card_number:     numLimpio,
-            expiration_date: expDate,
-            card_holder:     nombre.trim(),
-            security_code:   cvv,
-            account_number:  numLimpio,
-            email_holder:    compradorEmail || 'comprador@hoky.com',
-          },
+          installments:    cuotas,
+          total,
+          compradorEmail,
         }),
       });
 
@@ -98,21 +133,26 @@ export default function PaywayForm({ total, pedidoId, compradorEmail, onSuccess,
   const inp = 'w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm outline-none focus:border-gray-400 bg-white';
 
   return (
-    <form onSubmit={pagar} className="flex flex-col gap-4">
+    <form ref={formRef} onSubmit={pagar} className="flex flex-col gap-4">
+
+      {/* Inputs ocultos con data-decidir — el SDK los lee del formRef */}
+      <input type="hidden" data-decidir="card_number"            value={numero.replace(/\s/g, '')}  readOnly />
+      <input type="hidden" data-decidir="card_expiration_month"  value={vto.split('/')[0] || ''}    readOnly />
+      <input type="hidden" data-decidir="card_expiration_year"   value={vto.split('/')[1] || ''}    readOnly />
+      <input type="hidden" data-decidir="security_code"          value={cvv}                         readOnly />
+      <input type="hidden" data-decidir="card_holder_name"       value={nombre}                      readOnly />
+      <input type="hidden" data-decidir="card_holder_doc_type"   value={docTipo}                     readOnly />
+      <input type="hidden" data-decidir="card_holder_doc_number" value={docNum}                      readOnly />
 
       {/* Número de tarjeta */}
       <div>
         <label className="block text-xs font-semibold text-gray-500 mb-1.5">Número de tarjeta *</label>
         <div className="relative">
           <input
-            type="text"
-            inputMode="numeric"
-            value={numero}
-            onChange={e => setNumero(formatearNumero(e.target.value))}
-            placeholder="0000 0000 0000 0000"
-            maxLength={19}
-            className={inp + ' pr-24 font-mono'}
-            autoComplete="cc-number"
+            type="text" inputMode="numeric"
+            value={numero} onChange={e => setNumero(formatearNumero(e.target.value))}
+            placeholder="0000 0000 0000 0000" maxLength={19}
+            className={inp + ' pr-24 font-mono'} autoComplete="cc-number"
           />
           <div className="absolute right-3 top-1/2 -translate-y-1/2">
             {tarjeta
@@ -123,16 +163,14 @@ export default function PaywayForm({ total, pedidoId, compradorEmail, onSuccess,
         </div>
       </div>
 
-      {/* Nombre titular */}
+      {/* Nombre */}
       <div>
         <label className="block text-xs font-semibold text-gray-500 mb-1.5">Nombre del titular *</label>
         <input
-          type="text"
-          value={nombre}
+          type="text" value={nombre}
           onChange={e => setNombre(e.target.value.toUpperCase())}
           placeholder="COMO FIGURA EN LA TARJETA"
-          className={inp + ' uppercase'}
-          autoComplete="cc-name"
+          className={inp + ' uppercase'} autoComplete="cc-name"
         />
       </div>
 
@@ -141,27 +179,38 @@ export default function PaywayForm({ total, pedidoId, compradorEmail, onSuccess,
         <div>
           <label className="block text-xs font-semibold text-gray-500 mb-1.5">Vencimiento *</label>
           <input
-            type="text"
-            inputMode="numeric"
-            value={vto}
+            type="text" inputMode="numeric" value={vto}
             onChange={e => setVto(formatearVto(e.target.value))}
-            placeholder="MM/AA"
-            maxLength={5}
-            className={inp + ' font-mono'}
-            autoComplete="cc-exp"
+            placeholder="MM/AA" maxLength={5}
+            className={inp + ' font-mono'} autoComplete="cc-exp"
           />
         </div>
         <div>
           <label className="block text-xs font-semibold text-gray-500 mb-1.5">CVV *</label>
           <input
-            type="text"
-            inputMode="numeric"
-            value={cvv}
+            type="text" inputMode="numeric" value={cvv}
             onChange={e => setCvv(e.target.value.replace(/\D/g, '').slice(0, 4))}
-            placeholder="123"
-            maxLength={4}
-            className={inp + ' font-mono'}
-            autoComplete="cc-csc"
+            placeholder="123" maxLength={4}
+            className={inp + ' font-mono'} autoComplete="cc-csc"
+          />
+        </div>
+      </div>
+
+      {/* Documento */}
+      <div className="grid grid-cols-[110px_1fr] gap-3">
+        <div>
+          <label className="block text-xs font-semibold text-gray-500 mb-1.5">Tipo doc.</label>
+          <select value={docTipo} onChange={e => setDocTipo(e.target.value)} className={inp + ' bg-white'}>
+            <option value="dni">DNI</option>
+            <option value="cuil">CUIL</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-gray-500 mb-1.5">Número de documento *</label>
+          <input
+            type="text" inputMode="numeric" value={docNum}
+            onChange={e => setDocNum(e.target.value.replace(/\D/g, '').slice(0, 11))}
+            placeholder="12345678" className={inp + ' font-mono'}
           />
         </div>
       </div>
@@ -169,11 +218,7 @@ export default function PaywayForm({ total, pedidoId, compradorEmail, onSuccess,
       {/* Cuotas */}
       <div>
         <label className="block text-xs font-semibold text-gray-500 mb-1.5">Cuotas</label>
-        <select
-          value={cuotas}
-          onChange={e => setCuotas(Number(e.target.value))}
-          className={inp + ' bg-white'}
-        >
+        <select value={cuotas} onChange={e => setCuotas(Number(e.target.value))} className={inp + ' bg-white'}>
           <option value={1}>1 cuota sin interés</option>
           <option value={3}>3 cuotas sin interés</option>
           <option value={6}>6 cuotas sin interés</option>
@@ -183,7 +228,7 @@ export default function PaywayForm({ total, pedidoId, compradorEmail, onSuccess,
       {/* Seguridad */}
       <div className="flex items-center gap-2 text-xs text-gray-400">
         <Lock size={12} />
-        <span>Tus datos viajan cifrados por HTTPS. No almacenamos datos de tarjeta.</span>
+        <span>Tus datos viajan cifrados. No almacenamos datos de tarjeta.</span>
       </div>
 
       {/* Error */}
@@ -195,14 +240,13 @@ export default function PaywayForm({ total, pedidoId, compradorEmail, onSuccess,
       )}
 
       {/* Botón */}
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full bg-[#111] hover:bg-gray-800 disabled:bg-gray-400 text-white font-bold py-4 rounded-xl text-sm transition-colors flex items-center justify-center gap-2"
-      >
+      <button type="submit" disabled={loading || !sdkListo}
+        className="w-full bg-[#111] hover:bg-gray-800 disabled:bg-gray-400 text-white font-bold py-4 rounded-xl text-sm transition-colors flex items-center justify-center gap-2">
         {loading
           ? <><Loader2 size={16} className="animate-spin" /> Procesando pago...</>
-          : `Pagar con tarjeta · ${fmt(total)}`
+          : sdkListo
+            ? `Pagar con tarjeta · ${fmt(total)}`
+            : 'Cargando...'
         }
       </button>
     </form>
