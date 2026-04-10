@@ -1,11 +1,7 @@
 // src/app/api/payway/pago/route.js
+// Llama directo a la API de Payway sin SDK (el SDK sobreescribe los items de Cybersource)
 
 import { NextResponse } from 'next/server';
-
-async function getSDK() {
-  const sdkModulo = await import('sdk-node-payway');
-  return sdkModulo;
-}
 
 export async function POST(request) {
   try {
@@ -20,23 +16,15 @@ export async function POST(request) {
       return NextResponse.json({ ok: false, error: 'Datos incompletos' }, { status: 400 });
     }
 
-    const sdkModulo  = await getSDK();
-    const ambiente   = process.env.PAYWAY_ENVIRONMENT || 'production';
-    const publicKey  = process.env.PAYWAY_PUBLIC_KEY;
-    const privateKey = process.env.PAYWAY_PRIVATE_KEY;
-
-    const sdk = new sdkModulo.sdk(ambiente, publicKey, privateKey, 'Hoky', 'HokyEcommerce');
-
-    const amount = Math.round(total * 100) / 100;
+    const privateKey  = process.env.PAYWAY_PRIVATE_KEY;
+    const amount      = Math.round(total * 100) / 100;
 
     const [firstName, ...lastNameParts] = (compradorNombre || 'Cliente Hoky').split(' ');
-    const lastName = lastNameParts.join(' ') || firstName;
-
-    const ciudad      = direccion?.ciudad      || 'San Fernando del Valle de Catamarca';
+    const lastName     = lastNameParts.join(' ') || firstName;
+    const ciudad       = direccion?.ciudad       || 'San Fernando del Valle de Catamarca';
     const codigoPostal = direccion?.codigoPostal || '4700';
-    const calle       = direccion?.calle        || 'Sin dirección';
+    const calle        = tipoEnvio === 'retiro'  ? 'Esquiú 620' : (direccion?.calle || 'Sin dirección');
 
-    // ship_to siempre requerido por Cybersource
     const shipTo = {
       city:         ciudad,
       country:      'AR',
@@ -46,50 +34,21 @@ export async function POST(request) {
       phone_number: '3834000000',
       postal_code:  codigoPostal,
       state:        'K',
-      street1:      tipoEnvio === 'retiro' ? 'Esquiú 620' : calle,
-      street2:      tipoEnvio === 'retiro' ? 'Retiro en local' : '',
+      street1:      calle,
+      street2:      '',
     };
 
-    const fraudDetection = {
-      send_to_cs:    true,
-      channel:       'web',
-      device_unique_id: deviceFingerprint || pedidoId, // fingerprint del dispositivo
-      bill_to: {
-        city:         ciudad,
-        country:      'AR',
-        customer_id:  compradorEmail || 'guest',
-        email:        compradorEmail || 'cliente@hoky.com',
-        first_name:   firstName,
-        last_name:    lastName,
-        phone_number: '3834000000',
-        postal_code:  codigoPostal,
-        state:        'K',
-        street1:      calle,
-        street2:      '',
-      },
-      purchase_totals: {
-        currency: 'ARS',
-        amount:   Math.round(total * 100),
-      },
-      customer_in_site: {
-        days_in_site:        0,
-        is_guest:            true,
-        num_of_transactions: 1,
-      },
-      retail_transaction_data: {
-        ship_to:          shipTo,
-        dispatch_method:  tipoEnvio === 'retiro' ? 'pickUp' : 'homeDelivery',
-        days_to_delivery: tipoEnvio === 'retiro' ? 0 : 7,
-        items: (items || [{ nombre: 'Productos Hoky', cantidad: 1, precio: total }]).map((item, i) => ({
-          id:          String(i + 1),
-          value:       Math.round((item.precio || total) * 100),
-          description: item.nombre || 'Producto',
-          quantity:    item.cantidad || 1,
-        })),
-      },
-    };
+    const csItems = (items || [{ nombre: 'Indumentaria Hoky', cantidad: 1, precio: total }]).map((item, i) => ({
+      code:         `HOKY${String(i + 1).padStart(3, '0')}`,
+      name:         (item.nombre || 'Indumentaria').slice(0, 255),
+      description:  (item.nombre || 'Indumentaria').slice(0, 255),
+      sku:          `SKU${String(i + 1).padStart(3, '0')}`,
+      total_amount: Math.round((item.precio || total) * (item.cantidad || 1) * 100),
+      unit_price:   Math.round((item.precio || total) * 100),
+      quantity:     item.cantidad || 1,
+    }));
 
-    const args = {
+    const payload = {
       site_transaction_id: pedidoId,
       token,
       user_id:            compradorEmail || 'guest',
@@ -101,19 +60,54 @@ export async function POST(request) {
       description:        `Pedido Hoky #${pedidoId}`,
       payment_type:       'single',
       sub_payments:       [],
-      fraud_detection:    fraudDetection,
+      fraud_detection: {
+        send_to_cs:       true,
+        channel:          'web',
+        device_unique_id: deviceFingerprint || pedidoId,
+        bill_to: {
+          city:         ciudad,
+          country:      'AR',
+          customer_id:  compradorEmail || 'guest',
+          email:        compradorEmail || 'cliente@hoky.com',
+          first_name:   firstName,
+          last_name:    lastName,
+          phone_number: '3834000000',
+          postal_code:  codigoPostal,
+          state:        'K',
+          street1:      calle,
+          street2:      '',
+        },
+        purchase_totals: {
+          currency: 'ARS',
+          amount:   Math.round(total * 100),
+        },
+        customer_in_site: {
+          days_in_site:        0,
+          is_guest:            true,
+          num_of_transactions: 1,
+        },
+        retail_transaction_data: {
+          ship_to:          shipTo,
+          dispatch_method:  tipoEnvio === 'retiro' ? 'pickUp' : 'homeDelivery',
+          days_to_delivery: tipoEnvio === 'retiro' ? 0 : 7,
+          items:            csItems,
+        },
+      },
     };
 
-    console.log('Payway pago args:', JSON.stringify(args));
+    console.log('Payway payload:', JSON.stringify(payload, null, 2));
 
-    const result = await new Promise((resolve, reject) => {
-      sdk.payment(args, (data, err) => {
-        if (err && err !== '') return reject(new Error(JSON.stringify(err)));
-        resolve(data);
-      });
+    const res = await fetch('https://ventasonline.payway.com.ar/api/v2/payments', {
+      method:  'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey':        privateKey,
+      },
+      body: JSON.stringify(payload),
     });
 
-    console.log('Payway pago result:', JSON.stringify(result));
+    const result = await res.json();
+    console.log('Payway response:', JSON.stringify(result, null, 2));
 
     const status = result?.status?.toLowerCase();
 
