@@ -17,7 +17,7 @@ export async function POST(request) {
     }
 
     const privateKey  = process.env.PAYWAY_PRIVATE_KEY;
-    const amount      = Math.round(total * 100) / 100;
+    const amount = Math.round(total * 100); // en centavos: $25.50 → 2550
 
     const [firstName, ...lastNameParts] = (compradorNombre || 'Cliente Hoky').split(' ');
     const lastName     = lastNameParts.join(' ') || firstName;
@@ -89,7 +89,7 @@ export async function POST(request) {
         retail_transaction_data: {
           ship_to:          shipTo,
           dispatch_method:  tipoEnvio === 'retiro' ? 'pickUp' : 'homeDelivery',
-          days_to_delivery: tipoEnvio === 'retiro' ? 0 : 7,
+          days_to_delivery: tipoEnvio === 'retiro' ? '0' : '7',
           items:            csItems,
         },
       },
