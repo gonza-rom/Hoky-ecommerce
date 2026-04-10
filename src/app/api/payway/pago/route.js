@@ -61,7 +61,7 @@ export async function POST(request) {
       payment_type:       'single',
       sub_payments:       [],
       fraud_detection: {
-        send_to_cs:       true,
+        send_to_cs:       false,
         channel:          'web',
         device_unique_id: deviceFingerprint || pedidoId,
         bill_to: {
