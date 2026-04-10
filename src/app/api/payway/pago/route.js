@@ -10,7 +10,10 @@ async function getSDK() {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { pedidoId, token, bin, paymentMethodId, installments, total, compradorEmail } = body;
+    const {
+      pedidoId, token, bin, paymentMethodId, installments, total,
+      compradorEmail, compradorNombre, tipoEnvio, direccion, items,
+    } = body;
 
     if (!pedidoId || !token || !total) {
       return NextResponse.json({ ok: false, error: 'Datos incompletos' }, { status: 400 });
@@ -23,8 +26,48 @@ export async function POST(request) {
 
     const sdk = new sdkModulo.sdk(ambiente, publicKey, privateKey, 'Hoky', 'HokyEcommerce');
 
-    // Según la doc: amount es double con dos decimales (ej: 25.50), NO en centavos
     const amount = Math.round(total * 100) / 100;
+
+    // Datos de fraud detection requeridos por Cybersource
+    const [firstName, ...lastNameParts] = (compradorNombre || 'Cliente Hoky').split(' ');
+    const lastName = lastNameParts.join(' ') || firstName;
+
+    const fraudDetection = {
+      send_to_cs: true,
+      channel: 'web',
+      bill_to: {
+        city:         direccion?.ciudad  || 'San Fernando del Valle de Catamarca',
+        country:      'AR',
+        customer_id:  compradorEmail     || 'guest',
+        email:        compradorEmail     || 'cliente@hoky.com',
+        first_name:   firstName,
+        last_name:    lastName,
+        phone_number: '3834000000',
+        postal_code:  direccion?.codigoPostal || '4700',
+        state:        'K', // Catamarca
+        street1:      direccion?.calle   || 'Sin dirección',
+        street2:      tipoEnvio === 'retiro' ? 'Retiro en local' : 'Envío a domicilio',
+      },
+      purchase_totals: {
+        currency: 'ARS',
+        amount:   Math.round(total * 100), // en centavos para CS
+      },
+      customer_in_site: {
+        days_in_site:         0,
+        is_guest:             true,
+        num_of_transactions:  1,
+      },
+      retail_transaction_data: {
+        dispatch_method:  tipoEnvio === 'retiro' ? 'pickUp' : 'homeDelivery',
+        days_to_delivery: tipoEnvio === 'retiro' ? 0 : 7,
+        items: (items || [{ nombre: 'Productos Hoky', cantidad: 1, precio: total }]).map((item, i) => ({
+          id:          String(i + 1),
+          value:       Math.round((item.precio || item.price || total) * 100),
+          description: item.nombre || item.name || 'Producto',
+          quantity:    item.cantidad || item.quantity || 1,
+        })),
+      },
+    };
 
     const args = {
       site_transaction_id: pedidoId,
@@ -38,6 +81,7 @@ export async function POST(request) {
       description:        `Pedido Hoky #${pedidoId}`,
       payment_type:       'single',
       sub_payments:       [],
+      fraud_detection:    fraudDetection,
     };
 
     console.log('Payway pago args:', JSON.stringify(args));
@@ -58,7 +102,10 @@ export async function POST(request) {
     }
 
     if (status === 'rejected') {
-      const motivo = result.status_details?.error?.reason?.description || 'Pago rechazado por el banco';
+      const csDecision = result.fraud_detection?.status?.decision;
+      const motivo = csDecision === 'black'
+        ? 'Pago rechazado por el sistema antifraude'
+        : result.status_details?.error?.reason?.description || 'Pago rechazado por el banco';
       return NextResponse.json({ ok: false, status: 'rejected', error: motivo }, { status: 402 });
     }
 

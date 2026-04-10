@@ -575,6 +575,18 @@ export default function CheckoutPage() {
                       total={total}
                       pedidoId={pedidoIdConfirmado}
                       compradorEmail={form.email}
+                      compradorNombre={form.nombre}
+                      tipoEnvio={tipoEnvio}
+                      direccion={tipoEnvio === "envio" ? {
+                        calle:        form.calle,
+                        ciudad:       form.ciudad,
+                        codigoPostal: form.codigoPostal,
+                      } : null}
+                      items={cart.map(item => ({
+                        nombre:   item.nombre,
+                        cantidad: item.cantidad,
+                        precio:   item.precio,
+                      }))}
                       onSuccess={() => {
                         clearCart();
                         router.push(`/checkout/exito?pedido=${pedidoIdConfirmado}&metodo=payway`);

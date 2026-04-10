@@ -27,7 +27,7 @@ const fmt = (n) => new Intl.NumberFormat('es-AR', {
   style: 'currency', currency: 'ARS', minimumFractionDigits: 2,
 }).format(n ?? 0);
 
-export default function PaywayForm({ total, pedidoId, compradorEmail, onSuccess, onError }) {
+export default function PaywayForm({ total, pedidoId, compradorEmail, compradorNombre, tipoEnvio, direccion, items, onSuccess, onError }) {
   const [numero,   setNumero]   = useState('');
   const [nombre,   setNombre]   = useState('');
   const [vto,      setVto]      = useState('');
@@ -82,6 +82,7 @@ export default function PaywayForm({ total, pedidoId, compradorEmail, onSuccess,
       const token = await new Promise((resolve, reject) => {
         // inhabilitarCS = true → desactiva Cybersource (evita el llamado a frauddetectionconf)
         const inhabilitarCS = true;
+        const siteId = process.env.NEXT_PUBLIC_PAYWAY_SITE_ID || '93021573';
         const decidir = new window.Decidir(urlPayway, inhabilitarCS);
         decidir.setPublishableKey(publicKey);
         decidir.setTimeout(10000);
@@ -111,6 +112,10 @@ export default function PaywayForm({ total, pedidoId, compradorEmail, onSuccess,
           installments:    cuotas,
           total,
           compradorEmail,
+          compradorNombre,
+          tipoEnvio,
+          direccion,
+          items,
         }),
       });
 
