@@ -267,7 +267,7 @@ export default function PaywayForm({ total, pedidoId, compradorEmail, compradorN
       <button type="submit" disabled={loading || !sdkListo}
         className="w-full bg-[#111] hover:bg-gray-800 disabled:bg-gray-400 text-white font-bold py-4 rounded-xl text-sm transition-colors flex items-center justify-center gap-2">
         {loading
-          ? <><Loader2 size={16} className="animate-spin" /> Procesando pago...</>
+          ? <><Loader2 size={16} className="animate-spin" /> Procesando pagoo...</>
           : sdkListo
             ? `Pagar con tarjeta · ${fmt(total)}`
             : 'Cargando...'
