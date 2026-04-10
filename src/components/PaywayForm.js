@@ -38,8 +38,10 @@ export default function PaywayForm({ total, pedidoId, compradorEmail, compradorN
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState('');
   const [sdkListo, setSdkListo] = useState(false);
+  const [deviceFingerprint, setDeviceFingerprint] = useState('');
   const formRef = useRef(null);
 
+  // Generar fingerprint único del dispositivo
   const tarjeta   = detectarTarjeta(numero);
   const bin       = numero.replace(/\s/g, '').slice(0, 6);
   const publicKey = process.env.NEXT_PUBLIC_PAYWAY_PUBLIC_KEY;
@@ -56,6 +58,15 @@ export default function PaywayForm({ total, pedidoId, compradorEmail, compradorN
     if (document.getElementById('payway-sdk')) return;
 
     // Script oficial de Payway Ventas Online
+    // Generar device fingerprint basado en datos del navegador
+    const fp = btoa([
+      navigator.userAgent,
+      navigator.language,
+      screen.width + 'x' + screen.height,
+      new Date().getTimezoneOffset(),
+    ].join('|')).slice(0, 32);
+    setDeviceFingerprint(fp);
+
     const script    = document.createElement('script');
     script.id       = 'payway-sdk';
     script.src      = 'https://ventasonline.payway.com.ar/static/v2.6.4/decidir.js';
@@ -116,6 +127,7 @@ export default function PaywayForm({ total, pedidoId, compradorEmail, compradorN
           tipoEnvio,
           direccion,
           items,
+          deviceFingerprint,
         }),
       });
 

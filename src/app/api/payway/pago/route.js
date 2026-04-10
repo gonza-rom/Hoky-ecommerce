@@ -13,6 +13,7 @@ export async function POST(request) {
     const {
       pedidoId, token, bin, paymentMethodId, installments, total,
       compradorEmail, compradorNombre, tipoEnvio, direccion, items,
+      deviceFingerprint,
     } = body;
 
     if (!pedidoId || !token || !total) {
@@ -28,43 +29,62 @@ export async function POST(request) {
 
     const amount = Math.round(total * 100) / 100;
 
-    // Datos de fraud detection requeridos por Cybersource
     const [firstName, ...lastNameParts] = (compradorNombre || 'Cliente Hoky').split(' ');
     const lastName = lastNameParts.join(' ') || firstName;
 
+    const ciudad      = direccion?.ciudad      || 'San Fernando del Valle de Catamarca';
+    const codigoPostal = direccion?.codigoPostal || '4700';
+    const calle       = direccion?.calle        || 'Sin dirección';
+
+    // ship_to siempre requerido por Cybersource
+    const shipTo = {
+      city:         ciudad,
+      country:      'AR',
+      email:        compradorEmail || 'cliente@hoky.com',
+      first_name:   firstName,
+      last_name:    lastName,
+      phone_number: '3834000000',
+      postal_code:  codigoPostal,
+      state:        'K',
+      street1:      tipoEnvio === 'retiro' ? 'Esquiú 620' : calle,
+      street2:      tipoEnvio === 'retiro' ? 'Retiro en local' : '',
+    };
+
     const fraudDetection = {
-      send_to_cs: true,
-      channel: 'web',
+      send_to_cs:    true,
+      channel:       'web',
+      device_unique_id: deviceFingerprint || pedidoId, // fingerprint del dispositivo
       bill_to: {
-        city:         direccion?.ciudad  || 'San Fernando del Valle de Catamarca',
+        city:         ciudad,
         country:      'AR',
-        customer_id:  compradorEmail     || 'guest',
-        email:        compradorEmail     || 'cliente@hoky.com',
+        customer_id:  compradorEmail || 'guest',
+        email:        compradorEmail || 'cliente@hoky.com',
         first_name:   firstName,
         last_name:    lastName,
         phone_number: '3834000000',
-        postal_code:  direccion?.codigoPostal || '4700',
-        state:        'K', // Catamarca
-        street1:      direccion?.calle   || 'Sin dirección',
-        street2:      tipoEnvio === 'retiro' ? 'Retiro en local' : 'Envío a domicilio',
+        postal_code:  codigoPostal,
+        state:        'K',
+        street1:      calle,
+        street2:      '',
       },
       purchase_totals: {
         currency: 'ARS',
-        amount:   Math.round(total * 100), // en centavos para CS
+        amount:   Math.round(total * 100),
       },
       customer_in_site: {
-        days_in_site:         0,
-        is_guest:             true,
-        num_of_transactions:  1,
+        days_in_site:        0,
+        is_guest:            true,
+        num_of_transactions: 1,
       },
       retail_transaction_data: {
+        ship_to:          shipTo,
         dispatch_method:  tipoEnvio === 'retiro' ? 'pickUp' : 'homeDelivery',
         days_to_delivery: tipoEnvio === 'retiro' ? 0 : 7,
         items: (items || [{ nombre: 'Productos Hoky', cantidad: 1, precio: total }]).map((item, i) => ({
           id:          String(i + 1),
-          value:       Math.round((item.precio || item.price || total) * 100),
-          description: item.nombre || item.name || 'Producto',
-          quantity:    item.cantidad || item.quantity || 1,
+          value:       Math.round((item.precio || total) * 100),
+          description: item.nombre || 'Producto',
+          quantity:    item.cantidad || 1,
         })),
       },
     };
@@ -102,10 +122,10 @@ export async function POST(request) {
     }
 
     if (status === 'rejected') {
-      const csDecision = result.fraud_detection?.status?.decision;
-      const motivo = csDecision === 'black'
-        ? 'Pago rechazado por el sistema antifraude'
-        : result.status_details?.error?.reason?.description || 'Pago rechazado por el banco';
+      const validationErrors = result.fraud_detection?.status?.details?.validation_errors;
+      const motivo = validationErrors?.length
+        ? validationErrors.map(e => e.param).join(', ')
+        : result.status_details?.error?.reason?.description || 'Pago rechazado';
       return NextResponse.json({ ok: false, status: 'rejected', error: motivo }, { status: 402 });
     }
 
