@@ -58,14 +58,21 @@ export default function PaywayForm({ total, pedidoId, compradorEmail, compradorN
     if (document.getElementById('payway-sdk')) return;
 
     // Script oficial de Payway Ventas Online
-    // Generar device fingerprint basado en datos del navegador
-    const fp = btoa([
-      navigator.userAgent,
-      navigator.language,
-      screen.width + 'x' + screen.height,
-      new Date().getTimezoneOffset(),
-    ].join('|')).slice(0, 32);
-    setDeviceFingerprint(fp);
+    // Generar Device Fingerprint con script oficial de Cybersource/Payway
+    const sessionId = pedidoId || Math.random().toString(36).slice(2);
+    setDeviceFingerprint(sessionId);
+
+    // Cargar el script de Cybersource para device fingerprinting
+    const orgId = '1snn5n9w'; // Org ID de Cybersource para Payway producción
+    const csImg = document.createElement('img');
+    csImg.src = `https://h.online-metrix.net/fp/clear.png?org_id=${orgId}&session_id=${sessionId}&m=1`;
+    csImg.style.display = 'none';
+    document.body.appendChild(csImg);
+
+    const csScript = document.createElement('script');
+    csScript.src = `https://h.online-metrix.net/fp/tags.js?org_id=${orgId}&session_id=${sessionId}`;
+    csScript.async = true;
+    document.head.appendChild(csScript);
 
     const script    = document.createElement('script');
     script.id       = 'payway-sdk';
