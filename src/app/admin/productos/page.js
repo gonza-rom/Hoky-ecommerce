@@ -6,7 +6,7 @@ import { Plus, Search, Package, AlertTriangle, Pencil, Trash2, X, Star, Loader2 
 import MultipleImageUpload from '@/components/admin/MultipleImageUpload';
 
 const PAGE_SIZE = 20;
-const TALLES    = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+const TALLES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '28', '30', '32', '34', '36', '38', '40', '42', '44','46', '48', '50'];
 
 const FORM_VACIO = {
   nombre: '', descripcion: '', codigoProducto: '', codigoBarras: '',
