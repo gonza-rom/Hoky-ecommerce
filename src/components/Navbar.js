@@ -75,10 +75,37 @@ export default function Navbar() {
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-3 items-center h-14 md:h-16">
 
-            {/* ── Col izquierda: usuario (desktop) + links desktop ── */}
-            <div className="flex items-center gap-1 lg:gap-1">
+            {/* ── Col izquierda: links desktop ── */}
+            <div className="flex items-center">
+              <div className="hidden lg:flex items-center gap-5">
+                {links.map((link) => (
+                  <Link key={link.href} href={link.href}
+                    className="text-xs font-semibold tracking-[0.12em] uppercase text-gray-600 hover:text-hoky-black transition-colors whitespace-nowrap">
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
 
-              {/* Ícono usuario — visible en móvil y desktop, siempre a la izquierda */}
+            {/* ── Col centro: logo ── */}
+            <div className="flex justify-center">
+              <Link href="/">
+                <div className="relative h-9 w-24 md:h-11 md:w-28">
+                  <Image
+                    src="/logo.jpeg"
+                    alt="Hoky Indumentaria"
+                    fill
+                    className="object-contain"
+                    priority
+                  />
+                </div>
+              </Link>
+            </div>
+
+            {/* ── Col derecha: usuario + carrito + hamburguesa ── */}
+            <div className="flex items-center justify-end gap-0.5">
+
+              {/* Ícono usuario */}
               {!loadingUser && (
                 user ? (
                   <div ref={userMenuRef} className="relative">
@@ -93,9 +120,9 @@ export default function Navbar() {
                       <ChevronDown size={11} className="hidden md:block text-gray-400" />
                     </button>
 
-                    {/* Dropdown usuario */}
+                    {/* Dropdown usuario — se abre a la izquierda para no salirse */}
                     {userMenuAbierto && (
-                      <div className="absolute left-0 top-[calc(100%+8px)] bg-white border border-gray-200 rounded-xl shadow-xl min-w-[200px] z-50 overflow-hidden">
+                      <div className="absolute right-0 top-[calc(100%+8px)] bg-white border border-gray-200 rounded-xl shadow-xl min-w-[200px] z-50 overflow-hidden">
                         <div className="px-4 py-3 border-b border-gray-100">
                           <p className="text-[13px] font-bold text-hoky-black truncate max-w-[160px]">{nombre}</p>
                           <p className="text-[11px] text-gray-400 truncate max-w-[160px]">{user.email}</p>
@@ -129,35 +156,6 @@ export default function Navbar() {
                   </Link>
                 )
               )}
-
-              {/* Links de navegación — solo desktop, después del ícono de usuario */}
-              <div className="hidden lg:flex items-center gap-5">
-                {links.map((link) => (
-                  <Link key={link.href} href={link.href}
-                    className="text-xs font-semibold tracking-[0.12em] uppercase text-gray-600 hover:text-hoky-black transition-colors whitespace-nowrap">
-                    {link.label}
-                  </Link>
-                ))}
-              </div>
-            </div>
-
-            {/* ── Col centro: logo ── */}
-            <div className="flex justify-center">
-              <Link href="/">
-                <div className="relative h-9 w-24 md:h-11 md:w-28">
-                  <Image
-                    src="/logo.jpeg"
-                    alt="Hoky Indumentaria"
-                    fill
-                    className="object-contain"
-                    priority
-                  />
-                </div>
-              </Link>
-            </div>
-
-            {/* ── Col derecha: carrito + hamburguesa ── */}
-            <div className="flex items-center justify-end gap-0.5">
 
               {/* Carrito */}
               <button onClick={toggleCart}
@@ -225,7 +223,6 @@ export default function Navbar() {
           </div>
         )}
       </nav>
-
       <Cart />
     </>
   );
