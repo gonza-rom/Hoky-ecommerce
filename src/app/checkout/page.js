@@ -13,6 +13,7 @@ import { useCart } from '@/context/CartContext';
 import { createClient } from '@/lib/supabase/client';
 import { calcularEnvio, PROVINCIAS_AR } from '@/lib/envio';
 import PaywayForm from '@/components/PaywayForm';
+import MapaEntregaLocal from '@/components/MapaEntregaLocal';
 
 const DESCUENTO_DEFAULT = 10;
 
@@ -29,12 +30,7 @@ const fmt = (n) => new Intl.NumberFormat('es-AR', {
   style: 'currency', currency: 'ARS', minimumFractionDigits: 2,
 }).format(n ?? 0);
 
-const TRANSFERENCIA = {
-  titular: 'Hoky Indumentaria',
-  banco:   'Banco Galicia',
-  cbu:     '0070999820000012345678',
-  alias:   'HOKY.INDUMENTARIA',
-};
+// Los datos de transferencia vienen de la config del admin (estado configPago)
 
 // ── Barra de pasos ─────────────────────────────────────────────────────────
 function StepBar({ paso }) {
@@ -140,6 +136,7 @@ function ResumenLateral({ cart, subtotal, costoEnvio, total, tipoEnvio, infoEnvi
           <span className={costoEnvio === 0 && tipoEnvio ? 'text-green-600 font-medium' : ''}>
             {!tipoEnvio ? 'Calculando...' :
              tipoEnvio === 'retiro' ? 'Retiro gratis' :
+             tipoEnvio === 'local' ? 'A coordinar por WA' :
              infoEnvio?.gratis ? '¡Gratis!' :
              infoEnvio?.disponible ? fmt(infoEnvio.precio) :
              'A calcular'}
@@ -171,6 +168,33 @@ export default function CheckoutPage() {
   const [errores,            setErrores]            = useState({});
   const [copiado,            setCopiado]            = useState('');
   const [pedidoIdConfirmado, setPedidoIdConfirmado] = useState(''); // para Payway
+  const [configPago,         setConfigPago]         = useState({
+    titular: 'Hoky Indumentaria',
+    banco:   'Banco Galicia',
+    cbu:     '0070999820000012345678',
+    alias:   'HOKY.INDUMENTARIA',
+  });
+
+  const [localDetalles, setLocalDetalles] = useState({ calle: '', numero: '', barrio: '' });
+
+  useEffect(() => {
+    fetch('/api/admin/config')
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok && data.data) {
+          const c = data.data;
+          setConfigPago({
+            titular: c.transferenciaTitular || 'Hoky Indumentaria',
+            banco:   c.transferenciaBanco   || 'Banco Galicia',
+            cbu:     c.transferenciaCbu     || '0070999820000012345678',
+            alias:   c.transferenciaAlias   || 'HOKY.INDUMENTARIA',
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
+  const [direccionLocal,     setDireccionLocal]     = useState('');
+  const [coordsLocal,        setCoordsLocal]        = useState(null);
 
   const [form, setForm] = useState({
     nombre: '', email: '', telefono: '',
@@ -208,11 +232,11 @@ export default function CheckoutPage() {
     return { subtotal: sub, ahorroTotal: sinDesc - sub, tieneDescuento: sinDesc - sub > 0 };
   }, [cart, metodoPago]);
 
-  const costoEnvio = tipoEnvio === 'retiro' ? 0 : (infoEnvio?.disponible ? infoEnvio.precio : 0);
+  const costoEnvio = tipoEnvio === 'retiro' ? 0 : tipoEnvio === 'local' ? 0 : (infoEnvio?.disponible ? infoEnvio.precio : 0);
   const total      = subtotal + costoEnvio;
 
   function copiar(campo) {
-    const valor = campo === 'cbu' ? TRANSFERENCIA.cbu : TRANSFERENCIA.alias;
+    const valor = campo === 'cbu' ? configPago.cbu : configPago.alias;
     navigator.clipboard.writeText(valor).then(() => {
       setCopiado(campo);
       setTimeout(() => setCopiado(''), 2000);
@@ -237,6 +261,9 @@ export default function CheckoutPage() {
       if (!form.calle.trim())  e.calle     = 'Requerido';
       if (!form.ciudad.trim()) e.ciudad    = 'Requerido';
       if (!form.provincia)     e.provincia = 'Requerido';
+    }
+    if (tipoEnvio === 'local') {
+      if (!direccionLocal.trim()) e.direccionLocal = 'Ingresá tu calle y número';
     }
     setErrores(e);
     return Object.keys(e).length === 0;
@@ -284,6 +311,7 @@ export default function CheckoutPage() {
         compradorEmail:    form.email.trim(),
         compradorTelefono: form.telefono.trim(),
         notas: form.notas.trim() || null,
+        // Envío a domicilio (correo)
         ...(tipoEnvio === 'envio' && {
           direccion: {
             calle:        form.calle.trim(),
@@ -293,6 +321,17 @@ export default function CheckoutPage() {
             ciudad:       form.ciudad.trim(),
             provincia:    form.provincia,
             codigoPostal: form.codigoPostal.trim(),
+          },
+        }),
+        // Envío local (domicilio + coords del mapa)
+        ...(tipoEnvio === 'local' && {
+          entregaLocal: {
+            direccion: direccionLocal,
+            calle:     localDetalles.calle,
+            numero:    localDetalles.numero,
+            barrio:    localDetalles.barrio,
+            lat:       coordsLocal?.lat ?? null,
+            lng:       coordsLocal?.lng ?? null,
           },
         }),
       };
@@ -311,16 +350,9 @@ export default function CheckoutPage() {
         return; // el carrito se limpia en onSuccess del PaywayForm
       }
 
-      // MercadoPago
-      if (metodoPago === 'mercadopago' && data.mpInitPoint) {
-        clearCart();
-        window.location.href = data.mpInitPoint;
-        return;
-      }
-
       // Transferencia / Efectivo
       clearCart();
-      router.push(`/checkout/exito?pedido=${data.pedidoId}&metodo=${metodoPago}`);
+      router.push(`/checkout/exito?pedido=${data.pedidoId}&metodo=${metodoPago}&total=${total}`);
 
     } catch { setError('Error de conexión. Intentá de nuevo.'); }
     finally  { setLoading(false); }
@@ -333,15 +365,13 @@ export default function CheckoutPage() {
   const maxDescuento = cart.length > 0 ? Math.max(...cart.map(i => i.descuentoEfectivo ?? DESCUENTO_DEFAULT)) : DESCUENTO_DEFAULT;
 
   const metodosPago = [
-    { id: 'payway',       icon: CreditCard, label: 'Tarjeta de crédito / débito', desc: 'Visa, Mastercard, Amex, Naranja y más',              badge: null },
-    { id: 'mercadopago',  icon: CreditCard, label: 'Mercado Pago',                desc: 'Tarjeta, débito, efectivo en puntos de pago',         badge: null },
-    { id: 'transferencia',icon: Building2,  label: 'Transferencia bancaria',      desc: 'Transferí y envianos el comprobante',                  badge: `${maxDescuento}% OFF` },
+    { id: 'payway',       icon: CreditCard, label: 'Tarjeta de crédito / débito', desc: 'Próximamente disponible', badge: null, disabled: true },
+    { id: 'transferencia',icon: Building2,  label: 'Transferencia bancaria',      desc: 'Transferí y envianos el comprobante', badge: `${maxDescuento}% OFF` },
     { id: 'efectivo',     icon: Banknote,   label: 'Efectivo',                    desc: tipoEnvio === 'retiro' ? 'Al retirar en el local' : 'Al recibir el pedido', badge: `${maxDescuento}% OFF` },
   ];
 
   function labelBoton() {
-    if (metodoPago === 'payway')      return `Continuar con tarjeta · ${fmt(total)}`;
-    if (metodoPago === 'mercadopago') return `Pagar con Mercado Pago · ${fmt(total)}`;
+    if (metodoPago === 'payway') return `Continuar con tarjeta · ${fmt(total)}`;
     return `Confirmar pedido · ${fmt(total)}`;
   }
 
@@ -457,6 +487,20 @@ export default function CheckoutPage() {
                       </div>
                     </label>
 
+                    <label className={`flex items-start gap-3 p-4 border-2 rounded-xl cursor-pointer transition-all ${tipoEnvio === 'local' ? 'border-[#111] bg-gray-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                      <input type="radio" name="entrega" value="local" checked={tipoEnvio === 'local'} onChange={() => setTipoEnvio('local')} className="mt-0.5" />
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Truck size={15} className="text-gray-500" />
+                            <span className="text-sm font-semibold text-gray-900">Envío local</span>
+                          </div>
+                          <span className="text-sm font-bold text-green-600">Gratis / $2.000+</span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1 ml-5">Capital gratis · Valle Viejo y Valle Chico $2.000 mínimo</p>
+                      </div>
+                    </label>
+
                     <label className={`flex items-start gap-3 p-4 border-2 rounded-xl cursor-pointer transition-all ${tipoEnvio === 'envio' ? 'border-[#111] bg-gray-50' : 'border-gray-200 hover:border-gray-300'}`}>
                       <input type="radio" name="entrega" value="envio" checked={tipoEnvio === 'envio'} onChange={() => setTipoEnvio('envio')} className="mt-0.5" />
                       <div className="flex-1">
@@ -476,6 +520,22 @@ export default function CheckoutPage() {
                     </label>
                   </div>
                 </div>
+
+                {tipoEnvio === 'local' && (
+                  <div className="flex flex-col gap-3 border-t border-gray-100 pt-4">
+                    <h3 className="text-sm font-bold text-gray-900">Ubicación de entrega</h3>
+                    <MapaEntregaLocal
+                      onCoordsChange={setCoordsLocal}
+                      onDireccionChange={(data) => {
+                        setDireccionLocal(data.direccion);
+                        setLocalDetalles({ calle: data.calle, numero: data.numero, barrio: data.barrio });
+                      }}
+                    />
+                    {errores.direccionLocal && (
+                      <p className="text-xs text-red-500">{errores.direccionLocal}</p>
+                    )}
+                  </div>
+                )}
 
                 {tipoEnvio === 'envio' && (
                   <div className="flex flex-col gap-3 border-t border-gray-100 pt-4">
@@ -559,9 +619,9 @@ export default function CheckoutPage() {
                 </div>
                 <div className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
                   <div>
-                    <p className="text-xs text-gray-400">{tipoEnvio === 'retiro' ? 'Retiro en local' : 'Envío a domicilio'}</p>
+                    <p className="text-xs text-gray-400">{tipoEnvio === 'retiro' ? 'Retiro en local' : tipoEnvio === 'local' ? 'Envío local' : 'Envío a domicilio'}</p>
                     <p className="text-sm font-medium text-gray-900">
-                      {tipoEnvio === 'retiro' ? 'Esquiú 620, Catamarca' : `${form.calle} ${form.numero}, ${form.ciudad}`}
+                      {tipoEnvio === 'retiro' ? 'Esquiú 620, Catamarca' : tipoEnvio === 'local' ? direccionLocal : `${form.calle} ${form.numero}, ${form.ciudad}`}
                     </p>
                   </div>
                   <button onClick={() => setPaso(2)} className="text-xs font-semibold text-blue-500 hover:text-blue-700">Cambiar</button>
@@ -600,18 +660,26 @@ export default function CheckoutPage() {
                     {errores.metodoPago && <p className="text-xs text-red-500">{errores.metodoPago}</p>}
 
                     <div className="flex flex-col gap-2">
-                      {metodosPago.map(({ id, icon: Icon, label, desc, badge }) => (
-                        <label key={id} className={`flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer transition-all ${metodoPago === id ? 'border-[#111] bg-gray-50' : 'border-gray-200 hover:border-gray-300'}`}>
-                          <input type="radio" name="pago" value={id} checked={metodoPago === id} onChange={() => setMetodoPago(id)} />
+                      {metodosPago.map(({ id, icon: Icon, label, desc, badge, disabled }) => (
+                        <label key={id} className={`flex items-center gap-3 p-4 border-2 rounded-xl transition-all ${
+                          disabled
+                            ? 'border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed'
+                            : metodoPago === id
+                              ? 'border-[#111] bg-gray-50 cursor-pointer'
+                              : 'border-gray-200 hover:border-gray-300 cursor-pointer'
+                        }`}>
+                          <input type="radio" name="pago" value={id} checked={metodoPago === id}
+                            onChange={() => !disabled && setMetodoPago(id)} disabled={disabled} />
                           <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
-                            <Icon size={16} className="text-gray-600" />
+                            <Icon size={16} className="text-gray-400" />
                           </div>
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
-                              <span className="text-sm font-semibold text-gray-900">{label}</span>
-                              {badge && <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{badge}</span>}
+                              <span className="text-sm font-semibold text-gray-700">{label}</span>
+                              {badge && !disabled && <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{badge}</span>}
+                              {disabled && <span className="text-[10px] font-bold bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full">Próximamente</span>}
                             </div>
-                            <p className="text-xs text-gray-500 mt-0.5">{desc}</p>
+                            <p className="text-xs text-gray-400 mt-0.5">{desc}</p>
                           </div>
                         </label>
                       ))}
@@ -622,10 +690,10 @@ export default function CheckoutPage() {
                       <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex flex-col gap-2">
                         <p className="text-xs font-bold text-green-700 uppercase tracking-wider mb-1">Datos para transferir</p>
                         {[
-                          { label: 'Titular', value: TRANSFERENCIA.titular },
-                          { label: 'Banco',   value: TRANSFERENCIA.banco },
-                          { label: 'CBU',     value: TRANSFERENCIA.cbu,   campo: 'cbu' },
-                          { label: 'Alias',   value: TRANSFERENCIA.alias, campo: 'alias' },
+                          { label: 'Titular', value: configPago.titular },
+                          { label: 'Banco',   value: configPago.banco },
+                          { label: 'CBU',     value: configPago.cbu,   campo: 'cbu' },
+                          { label: 'Alias',   value: configPago.alias, campo: 'alias' },
                         ].map(({ label, value, campo }) => (
                           <div key={label} className="flex items-center justify-between gap-3">
                             <div>

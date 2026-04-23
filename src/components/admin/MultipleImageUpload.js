@@ -16,7 +16,6 @@ export default function MultipleImageUpload({
 
   const imagenes = Array.isArray(value) ? value : [];
 
-  // ── Subir a Cloudinary ────────────────────────────────────
   async function subirACloudinary(file) {
     const cloudName    = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
     const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET ?? 'hokyimage';
@@ -39,7 +38,6 @@ export default function MultipleImageUpload({
     return data.secure_url;
   }
 
-  // ── Selección de archivos ─────────────────────────────────
   async function handleFileSelect(e) {
     const files = Array.from(e.target.files ?? []);
     if (!files.length) return;
@@ -52,8 +50,8 @@ export default function MultipleImageUpload({
     }
 
     const totalSize = files.reduce((sum, f) => sum + f.size, 0);
-    if (totalSize > 20 * 1024 * 1024) {
-      setError('El tamaño total no puede superar 20MB');
+    if (totalSize > 50 * 1024 * 1024) {
+      setError('El tamaño total no puede superar 50MB');
       return;
     }
 
@@ -71,8 +69,9 @@ export default function MultipleImageUpload({
         errores.push(`${file.name}: no es una imagen`);
         continue;
       }
-      if (file.size > 5 * 1024 * 1024) {
-        errores.push(`${file.name}: supera 5MB`);
+      // ← Cambiado de 5MB a 10MB
+      if (file.size > 10 * 1024 * 1024) {
+        errores.push(`${file.name}: supera 10MB`);
         continue;
       }
 
@@ -92,7 +91,6 @@ export default function MultipleImageUpload({
     setProgreso(0);
   }
 
-  // ── Operaciones sobre el array ────────────────────────────
   function eliminar(index) {
     onChange(imagenes.filter((_, i) => i !== index));
   }
@@ -103,11 +101,9 @@ export default function MultipleImageUpload({
     onChange([img, ...copia]);
   }
 
-  // ── Render ────────────────────────────────────────────────
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-      {/* Label */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span style={{ fontSize: 13, fontWeight: 600, color: '#111' }}>Imágenes del producto</span>
         {imagenes.length > 0 && (
@@ -115,7 +111,6 @@ export default function MultipleImageUpload({
         )}
       </div>
 
-      {/* Zona de upload */}
       <label
         htmlFor="img-upload"
         style={{
@@ -177,14 +172,13 @@ export default function MultipleImageUpload({
                 Hacé click para subir imágenes
               </p>
               <p style={{ fontSize: 11, color: '#aaa', margin: 0 }}>
-                PNG, JPG, WebP · Máx. 5MB por imagen · Hasta {maxImagenes} fotos
+                PNG, JPG, WebP · Máx. 10MB por imagen · Hasta {maxImagenes} fotos
               </p>
             </div>
           </>
         )}
       </label>
 
-      {/* Error */}
       {error && (
         <div style={{
           display: 'flex', alignItems: 'flex-start', gap: 8,
@@ -196,7 +190,6 @@ export default function MultipleImageUpload({
         </div>
       )}
 
-      {/* Grid de previews */}
       {imagenes.length > 0 && (
         <div style={{
           display: 'grid',
@@ -220,8 +213,6 @@ export default function MultipleImageUpload({
                   alt={`Imagen ${index + 1}`}
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
-
-                {/* Badge principal */}
                 {index === 0 && (
                   <div style={{
                     position:       'absolute', bottom: 0, left: 0, right: 0,
@@ -235,8 +226,6 @@ export default function MultipleImageUpload({
                     </span>
                   </div>
                 )}
-
-                {/* Overlay acciones */}
                 <div className="overlay" style={{
                   position:   'absolute', inset: 0,
                   background: 'rgba(0,0,0,0.55)',
@@ -244,29 +233,21 @@ export default function MultipleImageUpload({
                   display:    'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                 }}>
                   {index !== 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setPrincipal(index)}
-                      title="Poner como principal"
+                    <button type="button" onClick={() => setPrincipal(index)} title="Poner como principal"
                       style={{
                         width: 28, height: 28, borderRadius: '50%',
                         background: '#fff', border: 'none', cursor: 'pointer',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}
-                    >
+                      }}>
                       <ImageIcon size={13} color="#111" />
                     </button>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => eliminar(index)}
-                    title="Eliminar"
+                  <button type="button" onClick={() => eliminar(index)} title="Eliminar"
                     style={{
                       width: 28, height: 28, borderRadius: '50%',
                       background: '#ef4444', border: 'none', cursor: 'pointer',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}
-                  >
+                    }}>
                     <X size={13} color="#fff" />
                   </button>
                 </div>
@@ -276,7 +257,6 @@ export default function MultipleImageUpload({
         </div>
       )}
 
-      {/* Estado vacío */}
       {imagenes.length === 0 && !subiendo && (
         <div style={{ textAlign: 'center', padding: '16px 0' }}>
           <ImageIcon size={36} color="#ddd" style={{ marginBottom: 8 }} />

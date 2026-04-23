@@ -2,7 +2,7 @@
 // src/app/admin/config/page.js
 
 import { useState, useEffect } from 'react';
-import { Save, Loader2, CreditCard, Truck, MapPin, MessageCircle, FileText } from 'lucide-react';
+import { Save, Loader2, CreditCard, Truck, MapPin, MessageCircle, FileText, Building2 } from 'lucide-react';
 
 const FORM_VACIO = {
   mpPublicKey: '', mpAccessToken: '', mpWebhookSecret: '',
@@ -10,6 +10,11 @@ const FORM_VACIO = {
   permitirRetiro: true, direccionLocal: '', horarioLocal: '',
   whatsapp: '', instagram: '', email: '',
   bannerTexto: '', politicaEnvio: '', politicaCambios: '',
+  // Transferencia bancaria
+  transferenciaTitular: '',
+  transferenciaBanco:   '',
+  transferenciaCbu:     '',
+  transferenciaAlias:   '',
 };
 
 export default function AdminConfigPage() {
@@ -29,22 +34,26 @@ export default function AdminConfigPage() {
       if (data.ok && data.data) {
         const c = data.data;
         setForm({
-          mpPublicKey:      c.mpPublicKey      ?? '',
-          mpAccessToken:    '',
-          mpWebhookSecret:  '',
-          costoEnvioBase:   c.costoEnvioBase   != null ? String(c.costoEnvioBase)   : '',
-          envioGratisDesde: c.envioGratisDesde != null ? String(c.envioGratisDesde) : '',
-          zonaEnvio:        c.zonaEnvio        ?? '',
-          montoMinimo:      c.montoMinimo      != null ? String(c.montoMinimo)       : '',
-          permitirRetiro:   c.permitirRetiro   ?? true,
-          direccionLocal:   c.direccionLocal   ?? '',
-          horarioLocal:     c.horarioLocal     ?? '',
-          whatsapp:         c.whatsapp         ?? '',
-          instagram:        c.instagram        ?? '',
-          email:            c.email            ?? '',
-          bannerTexto:      c.bannerTexto      ?? '',
-          politicaEnvio:    c.politicaEnvio    ?? '',
-          politicaCambios:  c.politicaCambios  ?? '',
+          mpPublicKey:          c.mpPublicKey          ?? '',
+          mpAccessToken:        '',
+          mpWebhookSecret:      '',
+          costoEnvioBase:       c.costoEnvioBase   != null ? String(c.costoEnvioBase)   : '',
+          envioGratisDesde:     c.envioGratisDesde != null ? String(c.envioGratisDesde) : '',
+          zonaEnvio:            c.zonaEnvio        ?? '',
+          montoMinimo:          c.montoMinimo      != null ? String(c.montoMinimo)       : '',
+          permitirRetiro:       c.permitirRetiro   ?? true,
+          direccionLocal:       c.direccionLocal   ?? '',
+          horarioLocal:         c.horarioLocal     ?? '',
+          whatsapp:             c.whatsapp         ?? '',
+          instagram:            c.instagram        ?? '',
+          email:                c.email            ?? '',
+          bannerTexto:          c.bannerTexto      ?? '',
+          politicaEnvio:        c.politicaEnvio    ?? '',
+          politicaCambios:      c.politicaCambios  ?? '',
+          transferenciaTitular: c.transferenciaTitular ?? '',
+          transferenciaBanco:   c.transferenciaBanco   ?? '',
+          transferenciaCbu:     c.transferenciaCbu     ?? '',
+          transferenciaAlias:   c.transferenciaAlias   ?? '',
         });
       }
     } catch {}
@@ -85,7 +94,6 @@ export default function AdminConfigPage() {
 
   return (
     <div>
-      {/* Header */}
       <div className="flex items-start justify-between gap-3 mb-6">
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight mb-1">Configuración</h1>
@@ -107,26 +115,27 @@ export default function AdminConfigPage() {
 
       <div className="flex flex-col gap-4">
 
-        {/* Mercado Pago */}
-        <Seccion icon={CreditCard} titulo="Mercado Pago">
-          <Campo label="Public Key">
-            <input value={form.mpPublicKey} onChange={set('mpPublicKey')}
-              placeholder="APP_USR-xxxxxxxx..." className={inp} />
-          </Campo>
+        {/* Transferencia bancaria */}
+        <Seccion icon={Building2} titulo="Transferencia bancaria">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Campo label="Access Token" hint="Dejá vacío para no cambiar">
-              <input type="password" value={form.mpAccessToken} onChange={set('mpAccessToken')}
-                placeholder="● ● ● ● ●" className={inp} autoComplete="off" />
+            <Campo label="Titular de la cuenta">
+              <input value={form.transferenciaTitular} onChange={set('transferenciaTitular')}
+                placeholder="Hoky Indumentaria" className={inp} />
             </Campo>
-            <Campo label="Webhook Secret" hint="Dejá vacío para no cambiar">
-              <input type="password" value={form.mpWebhookSecret} onChange={set('mpWebhookSecret')}
-                placeholder="● ● ● ● ●" className={inp} autoComplete="off" />
+            <Campo label="Banco">
+              <input value={form.transferenciaBanco} onChange={set('transferenciaBanco')}
+                placeholder="Banco Galicia" className={inp} />
             </Campo>
           </div>
-          <div className="bg-gray-50 rounded-lg px-3 py-2.5 text-xs text-gray-400 break-all">
-            Webhook URL: <code className="bg-gray-100 px-1 py-0.5 rounded text-[11px]">
-              {typeof window !== 'undefined' ? window.location.origin : 'https://tu-dominio.com'}/api/webhooks/mercadopago
-            </code>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Campo label="CBU">
+              <input value={form.transferenciaCbu} onChange={set('transferenciaCbu')}
+                placeholder="0070999820000012345678" className={`${inp} font-mono`} />
+            </Campo>
+            <Campo label="Alias">
+              <input value={form.transferenciaAlias} onChange={set('transferenciaAlias')}
+                placeholder="HOKY.INDUMENTARIA" className={`${inp} font-mono uppercase`} />
+            </Campo>
           </div>
         </Seccion>
 
@@ -208,7 +217,6 @@ export default function AdminConfigPage() {
 
       </div>
 
-      {/* Botón inferior */}
       <div className="mt-6 flex justify-end">
         <BtnGuardar onClick={guardar} loading={guardando} />
       </div>

@@ -139,7 +139,9 @@ export default function AdminPedidosPage() {
                         className="border-b border-gray-50 hover:bg-gray-50 transition-colors last:border-0">
                         <td className="px-4 py-3">
                           <p className="font-bold text-[#111]">#{p.id.slice(-8).toUpperCase()}</p>
-                          <p className="text-[11px] text-gray-400">{p.tipoEnvio === 'envio' ? 'Envío' : 'Retiro'}</p>
+                          <p className="text-[11px] text-gray-400">
+                            {p.tipoEnvio === 'envio' ? 'Envío' : p.tipoEnvio === 'local' ? 'Envío local' : 'Retiro'}
+                          </p>
                         </td>
                         <td className="px-4 py-3">
                           <p className="font-semibold text-[#111]">{p.compradorNombre ?? '—'}</p>
@@ -283,7 +285,11 @@ export default function AdminPedidosPage() {
                   <InfoRow label="Nombre"   value={pedidoDetalle.compradorNombre ?? '—'} />
                   <InfoRow label="Email"    value={pedidoDetalle.compradorEmail ?? '—'} />
                   <InfoRow label="Teléfono" value={pedidoDetalle.compradorTelefono ?? '—'} />
-                  <InfoRow label="Entrega"  value={pedidoDetalle.tipoEnvio === 'envio' ? 'Envío a domicilio' : 'Retiro en local'} />
+                  <InfoRow label="Entrega" value={
+                    pedidoDetalle.tipoEnvio === 'envio'  ? 'Envío a domicilio' :
+                    pedidoDetalle.tipoEnvio === 'local'  ? 'Envío local (domicilio)' :
+                    'Retiro en local'
+                  } />
                   <InfoRow label="Pago"     value={pedidoDetalle.metodoPago === 'mercadopago' ? 'Mercado Pago' : pedidoDetalle.metodoPago === 'transferencia' ? 'Transferencia' : 'Efectivo'} />
                   {pedidoDetalle.notas && <InfoRow label="Notas" value={pedidoDetalle.notas} />}
                 </div>
@@ -295,7 +301,59 @@ export default function AdminPedidosPage() {
                   </a>
                 )}
               </div>
+              {/* Entrega local con mapa */}
+              {pedidoDetalle.tipoEnvio === 'local' && (
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-2">Entrega local</p>
+                  <div className="bg-gray-50 rounded-xl p-4 flex flex-col gap-2">
+                    {pedidoDetalle.localCalle && (
+                      <InfoRow label="Dirección" value={`${pedidoDetalle.localCalle} ${pedidoDetalle.localNumero ?? ''}`.trim()} />
+                    )}
+                    {pedidoDetalle.localBarrio && (
+                      <InfoRow label="Barrio / Ref." value={pedidoDetalle.localBarrio} />
+                    )}
+                    {pedidoDetalle.localLat && pedidoDetalle.localLng && (
+                      <a
+                        href={`https://www.google.com/maps?q=${pedidoDetalle.localLat},${pedidoDetalle.localLng}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-blue-500 font-semibold mt-1"
+                      >
+                        📍 Ver en Google Maps →
+                      </a>
+                    )}
+                  </div>
+                  {pedidoDetalle.localLat && pedidoDetalle.localLng && (
+                    <iframe
+                      src={
+                        'https://www.openstreetmap.org/export/embed.html?bbox=' +
+                        (pedidoDetalle.localLng - 0.004) + ',' +
+                        (pedidoDetalle.localLat - 0.004) + ',' +
+                        (pedidoDetalle.localLng + 0.004) + ',' +
+                        (pedidoDetalle.localLat + 0.004) +
+                        '&layer=mapnik&marker=' +
+                        pedidoDetalle.localLat + ',' +
+                        pedidoDetalle.localLng
+                      }
+                      style={{ width: '100%', height: 180, borderRadius: 12, border: '1px solid #e5e7eb', marginTop: 8 }}
+                    />
+                  )}
+                </div>
+              )}
 
+              {/* Envío a domicilio */}
+              {pedidoDetalle.tipoEnvio === 'envio' && (
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-2">Dirección de envío</p>
+                  <div className="bg-gray-50 rounded-xl p-4 flex flex-col gap-2">
+                    <InfoRow label="Calle"     value={`${pedidoDetalle.envCalle ?? ''} ${pedidoDetalle.envNumero ?? ''}`.trim() || '—'} />
+                    {pedidoDetalle.envPiso && <InfoRow label="Piso/Depto" value={pedidoDetalle.envPiso} />}
+                    <InfoRow label="Ciudad"    value={pedidoDetalle.envCiudad    ?? '—'} />
+                    <InfoRow label="Provincia" value={pedidoDetalle.envProvincia ?? '—'} />
+                    <InfoRow label="CP"        value={pedidoDetalle.envCodigoPostal ?? '—'} />
+                  </div>
+                </div>
+              )}
               {/* Productos */}
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-2">Productos</p>

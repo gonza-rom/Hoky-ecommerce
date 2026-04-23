@@ -37,7 +37,7 @@ const COLOR_MAP = {
   camel:    '#c8a26b',
 };
 
-const DESCUENTO_EFECTIVO = 10;
+const DESCUENTO_DEFAULT = 10; // fallback si el producto no tiene descuento configurado
 
 export default function ProductoDetallePage() {
   const params = useParams();
@@ -104,7 +104,10 @@ export default function ProductoDetallePage() {
 
   const stockEfectivo = tieneVariantes ? (varianteSeleccionada?.stock ?? 0) : (producto?.stock ?? 0);
   const precioBase    = varianteSeleccionada?.precio ?? producto?.precio ?? 0;
-  const precioConDesc = Math.round(precioBase * (1 - DESCUENTO_EFECTIVO / 100));
+
+  // Usar el descuento configurado en el producto, con fallback al default
+  const descuento     = producto?.descuentoEfectivo ?? DESCUENTO_DEFAULT;
+  const precioConDesc = Math.round(precioBase * (1 - descuento / 100));
 
   const handleTalle = (talle) => {
     setTalleSeleccionado(prev => prev === talle ? '' : talle);
@@ -126,10 +129,11 @@ export default function ProductoDetallePage() {
     }
     const item = {
       ...producto,
-      precio:     precioBase,
-      varianteId: varianteSeleccionada?.id ?? null,
-      talle:      talleSeleccionado || null,
-      color:      colorSeleccionado || null,
+      precio:            precioBase,
+      descuentoEfectivo: descuento,
+      varianteId:        varianteSeleccionada?.id ?? null,
+      talle:             talleSeleccionado || null,
+      color:             colorSeleccionado || null,
       id: varianteSeleccionada ? `${producto.id}-${varianteSeleccionada.id}` : producto.id,
     };
     addToCart(item, cantidad);
@@ -235,7 +239,7 @@ export default function ProductoDetallePage() {
                 {producto.nombre}
               </h1>
 
-              {/* ── Bloque de precios ─────────────────────────────── */}
+              {/* ── Bloque de precios ── */}
               <div className="mb-5 pb-5 border-b">
 
                 {producto.precioAnterior && producto.precioAnterior > precioBase && (
@@ -284,12 +288,12 @@ export default function ProductoDetallePage() {
                       fontSize: 11, fontWeight: 800, color: '#fff',
                       background: '#16a34a', padding: '2px 8px', borderRadius: 20,
                     }}>
-                      {DESCUENTO_EFECTIVO}% OFF
+                      {descuento}% OFF
                     </span>
                   </div>
                 </div>
 
-                {/* 3 cuotas sin interés — solo en el local */}
+                {/* 3 cuotas sin interés */}
                 <div style={{
                   background: '#eff6ff', border: '1px solid #bfdbfe',
                   borderRadius: 10, padding: '10px 14px',

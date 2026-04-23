@@ -6,47 +6,6 @@ import { notificarPedidoNuevo } from '@/lib/notificaciones';
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
 
-async function crearPreferenciaMp(pedido, items, compradorEmail) {
-  const accessToken = process.env.MP_ACCESS_TOKEN;
-  if (!accessToken) return null;
-
-  try {
-    const body = {
-      items: items.map(item => ({
-        id:          item.productoId ?? 'producto',
-        title:       item.nombre,
-        quantity:    item.cantidad,
-        unit_price:  item.precio,
-        currency_id: 'ARS',
-      })),
-      payer:       { email: compradorEmail },
-      back_urls: {
-        success: `${APP_URL}/checkout/exito?pedido=${pedido.id}&status=approved&metodo=mercadopago`,
-        failure: `${APP_URL}/checkout/exito?pedido=${pedido.id}&status=rejected&metodo=mercadopago`,
-        pending: `${APP_URL}/checkout/exito?pedido=${pedido.id}&status=pending&metodo=mercadopago`,
-      },
-      auto_return:          'approved',
-      external_reference:   pedido.id,
-      statement_descriptor: 'HOKY INDUMENTARIA',
-    };
-
-    const res  = await fetch('https://api.mercadopago.com/checkout/preferences', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` },
-      body:    JSON.stringify(body),
-    });
-
-    const data = await res.json();
-    if (!res.ok) { console.error('[MP]', data); return null; }
-
-    await prisma.pedido.update({ where: { id: pedido.id }, data: { mpPaymentId: data.id } });
-    return data.init_point;
-  } catch (err) {
-    console.error('[MP] Error:', err);
-    return null;
-  }
-}
-
 export async function POST(req) {
   try {
     const body = await req.json();
@@ -54,7 +13,7 @@ export async function POST(req) {
       items, subtotal, costoEnvio, total,
       metodoPago, tipoEnvio,
       compradorNombre, compradorEmail, compradorTelefono,
-      notas, direccion,
+      notas, direccion, entregaLocal,
     } = body;
 
     if (!items?.length)
@@ -92,6 +51,17 @@ export async function POST(req) {
       }
     } catch {}
 
+    // Parsear dirección local si viene como string "calle numero, barrio"
+    let localCalle = null, localNumero = null, localBarrio = null;
+    let localLat   = null, localLng    = null;
+    if (tipoEnvio === 'local' && entregaLocal) {
+      localCalle  = entregaLocal.calle     ?? entregaLocal.direccion ?? null;
+      localNumero = entregaLocal.numero    ?? null;
+      localBarrio = entregaLocal.barrio    ?? null;
+      localLat    = entregaLocal.lat       ?? null;
+      localLng    = entregaLocal.lng       ?? null;
+    }
+
     // Crear pedido
     const pedido = await prisma.$transaction(async (tx) => {
       let direccionId = null;
@@ -125,6 +95,25 @@ export async function POST(req) {
           compradorEmail,
           compradorTelefono,
           notas: notas ?? null,
+
+          // Campos de envío a domicilio
+          ...(tipoEnvio === 'envio' && direccion && {
+            envCalle:        direccion.calle        ?? null,
+            envNumero:       direccion.numero       ?? null,
+            envPiso:         direccion.piso         ?? null,
+            envDepartamento: direccion.departamento ?? null,
+            envCiudad:       direccion.ciudad       ?? null,
+            envProvincia:    direccion.provincia    ?? null,
+            envCodigoPostal: direccion.codigoPostal ?? null,
+          }),
+
+          // Campos de envío local
+          ...(tipoEnvio === 'local' && {
+            localCalle:  localCalle,
+            localLat:    localLat  ? parseFloat(localLat)  : null,
+            localLng:    localLng  ? parseFloat(localLng)  : null,
+          }),
+
           items: {
             create: items.map(item => ({
               productoId: item.productoId ?? null,
@@ -153,26 +142,11 @@ export async function POST(req) {
       return p;
     });
 
-    // ── Notificación WhatsApp al admin (desactivada por ahora) ──
-    // Corre en background, no bloquea la respuesta al cliente
     notificarPedidoNuevo(pedido, items).catch(err =>
       console.error('[WA Notif] Error background:', err)
     );
 
-    // Mercado Pago
-    let mpInitPoint = null;
-    if (metodoPago === 'mercadopago') {
-      mpInitPoint = await crearPreferenciaMp(pedido, items, compradorEmail);
-      if (!mpInitPoint) {
-        return NextResponse.json({
-          ok:       true,
-          pedidoId: pedido.id,
-          warning:  'No se pudo crear el link de Mercado Pago. Coordiná el pago por WhatsApp.',
-        });
-      }
-    }
-
-    return NextResponse.json({ ok: true, pedidoId: pedido.id, mpInitPoint });
+    return NextResponse.json({ ok: true, pedidoId: pedido.id });
 
   } catch (error) {
     console.error('[POST /api/checkout]', error);

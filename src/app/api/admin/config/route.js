@@ -2,14 +2,11 @@
 import { NextResponse } from 'next/server';
 import { prisma }       from '@/lib/prisma';
 
-const CONFIG_ID = 'hoky-config'; // ID fijo — solo existe un registro
+const CONFIG_ID = 'hoky-config';
 
-// ── GET /api/admin/config ──────────────────────────────────────────────────
 export async function GET() {
   try {
-    const config = await prisma.configTienda.findFirst({
-      where: { id: CONFIG_ID },
-    });
+    const config = await prisma.configTienda.findFirst({ where: { id: CONFIG_ID } });
     return NextResponse.json({ ok: true, data: config ?? null });
   } catch (error) {
     console.error('[GET /api/admin/config]', error);
@@ -17,28 +14,17 @@ export async function GET() {
   }
 }
 
-// ── POST /api/admin/config — upsert ───────────────────────────────────────
 export async function POST(req) {
   try {
     const body = await req.json();
-
     const {
-      mpPublicKey,
-      mpAccessToken,
-      mpWebhookSecret,
-      costoEnvioBase,
-      envioGratisDesde,
-      zonaEnvio,
-      montoMinimo,
-      permitirRetiro,
-      direccionLocal,
-      horarioLocal,
-      whatsapp,
-      instagram,
-      email,
-      bannerTexto,
-      politicaEnvio,
-      politicaCambios,
+      mpPublicKey, mpAccessToken, mpWebhookSecret,
+      costoEnvioBase, envioGratisDesde, zonaEnvio, montoMinimo,
+      permitirRetiro, direccionLocal, horarioLocal,
+      whatsapp, instagram, email,
+      bannerTexto, politicaEnvio, politicaCambios,
+      // Transferencia bancaria
+      transferenciaTitular, transferenciaBanco, transferenciaCbu, transferenciaAlias,
     } = body;
 
     const data = {
@@ -46,23 +32,25 @@ export async function POST(req) {
       mpWebhookSecret:  mpWebhookSecret?.trim() || null,
       costoEnvioBase:   costoEnvioBase  != null ? Number(costoEnvioBase)  : 0,
       envioGratisDesde: envioGratisDesde != null && envioGratisDesde !== ''
-                          ? Number(envioGratisDesde)
-                          : null,
-      zonaEnvio:        zonaEnvio?.trim()        || null,
+                          ? Number(envioGratisDesde) : null,
+      zonaEnvio:        zonaEnvio?.trim()       || null,
       montoMinimo:      montoMinimo != null ? Number(montoMinimo) : 0,
       permitirRetiro:   permitirRetiro ?? true,
-      direccionLocal:   direccionLocal?.trim()   || null,
-      horarioLocal:     horarioLocal?.trim()     || null,
-      whatsapp:         whatsapp?.trim()         || null,
-      instagram:        instagram?.trim()        || null,
-      email:            email?.trim()            || null,
-      bannerTexto:      bannerTexto?.trim()      || null,
-      politicaEnvio:    politicaEnvio?.trim()    || null,
-      politicaCambios:  politicaCambios?.trim()  || null,
+      direccionLocal:   direccionLocal?.trim()  || null,
+      horarioLocal:     horarioLocal?.trim()    || null,
+      whatsapp:         whatsapp?.trim()        || null,
+      instagram:        instagram?.trim()       || null,
+      email:            email?.trim()           || null,
+      bannerTexto:      bannerTexto?.trim()     || null,
+      politicaEnvio:    politicaEnvio?.trim()   || null,
+      politicaCambios:  politicaCambios?.trim() || null,
+      // Transferencia
+      transferenciaTitular: transferenciaTitular?.trim() || null,
+      transferenciaBanco:   transferenciaBanco?.trim()   || null,
+      transferenciaCbu:     transferenciaCbu?.trim()     || null,
+      transferenciaAlias:   transferenciaAlias?.trim()   || null,
     };
 
-    // Solo actualizar mpAccessToken si viene un valor nuevo (no vacío)
-    // para no sobreescribir el token guardado con un string vacío
     if (mpAccessToken?.trim()) {
       data.mpAccessToken = mpAccessToken.trim();
     }

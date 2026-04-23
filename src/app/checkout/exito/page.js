@@ -1,20 +1,19 @@
 'use client';
 // src/app/checkout/exito/page.js
 
-import { Suspense } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { CheckCircle, ShoppingBag, MessageCircle, Copy, Check } from 'lucide-react';
-import { useState } from 'react';
 
-const TRANSFERENCIA = {
+const WA_NUMBER = '5493834644467';
+
+const CONFIG_DEFAULT = {
   titular: 'Hoky Indumentaria',
   banco:   'Banco Galicia',
   cbu:     '0070999820000012345678',
   alias:   'HOKY.INDUMENTARIA',
 };
-
-const WA_NUMBER = '5493834644467';
 
 function DatoTransferencia({ label, valor, onCopiar, copiado }) {
   return (
@@ -43,13 +42,31 @@ function DatoTransferencia({ label, valor, onCopiar, copiado }) {
 function ExitoContent() {
   const searchParams = useSearchParams();
   const pedidoId = searchParams.get('pedido');
-  const metodo   = searchParams.get('metodo');   // transferencia | efectivo | mercadopago
-  const status   = searchParams.get('status');   // de MercadoPago: approved | rejected | pending
+  const metodo   = searchParams.get('metodo');
+  const status   = searchParams.get('status');
 
-  const [copiado, setCopiado] = useState('');
+  const [copiado,    setCopiado]    = useState('');
+  const [configPago, setConfigPago] = useState(CONFIG_DEFAULT);
+
+  useEffect(() => {
+    fetch('/api/admin/config')
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok && data.data) {
+          const c = data.data;
+          setConfigPago({
+            titular: c.transferenciaTitular || CONFIG_DEFAULT.titular,
+            banco:   c.transferenciaBanco   || CONFIG_DEFAULT.banco,
+            cbu:     c.transferenciaCbu     || CONFIG_DEFAULT.cbu,
+            alias:   c.transferenciaAlias   || CONFIG_DEFAULT.alias,
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   function copiar(campo) {
-    const valor = campo === 'cbu' ? TRANSFERENCIA.cbu : TRANSFERENCIA.alias;
+    const valor = campo === 'cbu' ? configPago.cbu : configPago.alias;
     navigator.clipboard.writeText(valor).then(() => {
       setCopiado(campo);
       setTimeout(() => setCopiado(''), 2000);
@@ -116,17 +133,16 @@ function ExitoContent() {
               🏦 Realizá la transferencia
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
-              <DatoTransferencia label="Titular" valor={TRANSFERENCIA.titular} />
-              <DatoTransferencia label="Banco"   valor={TRANSFERENCIA.banco} />
-              <DatoTransferencia label="CBU"     valor={TRANSFERENCIA.cbu}
+              <DatoTransferencia label="Titular" valor={configPago.titular} />
+              <DatoTransferencia label="Banco"   valor={configPago.banco} />
+              <DatoTransferencia label="CBU"     valor={configPago.cbu}
                 onCopiar={() => copiar('cbu')} copiado={copiado === 'cbu'} />
-              <DatoTransferencia label="Alias"   valor={TRANSFERENCIA.alias}
+              <DatoTransferencia label="Alias"   valor={configPago.alias}
                 onCopiar={() => copiar('alias')} copiado={copiado === 'alias'} />
               <DatoTransferencia label="Monto"
                 valor={`$${parseInt(searchParams.get('total') ?? '0').toLocaleString('es-AR') || '(ver tu pedido)'}`} />
             </div>
 
-            {/* Botón enviar comprobante por WhatsApp */}
             <a
               href={`https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(
                 `Hola! Hice una transferencia para el pedido #${pedidoId?.slice(-8).toUpperCase() ?? ''} en Hoky.\n\nTe mando el comprobante ahora.`
@@ -212,9 +228,9 @@ export default function CheckoutExitoPage() {
 }
 
 const s = {
-  page:        { minHeight: '100vh', background: '#f5f4f2', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, fontFamily: "'Inter', sans-serif" },
-  card:        { background: '#fff', borderRadius: 20, border: '1px solid #e8e5e0', padding: '36px 28px', width: '100%', maxWidth: 480, boxShadow: '0 4px 32px rgba(0,0,0,0.06)' },
-  titulo:      { fontSize: 22, fontWeight: 900, color: '#111', margin: '0 0 4px', letterSpacing: '-0.02em', textAlign: 'center' },
-  btnPrimary:  { display: 'block', width: '100%', padding: '13px', background: '#111', color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer', textAlign: 'center', boxSizing: 'border-box' },
+  page:          { minHeight: '100vh', background: '#f5f4f2', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, fontFamily: "'Inter', sans-serif" },
+  card:          { background: '#fff', borderRadius: 20, border: '1px solid #e8e5e0', padding: '36px 28px', width: '100%', maxWidth: 480, boxShadow: '0 4px 32px rgba(0,0,0,0.06)' },
+  titulo:        { fontSize: 22, fontWeight: 900, color: '#111', margin: '0 0 4px', letterSpacing: '-0.02em', textAlign: 'center' },
+  btnPrimary:    { display: 'block', width: '100%', padding: '13px', background: '#111', color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer', textAlign: 'center', boxSizing: 'border-box' },
   btnSecundario: { display: 'block', width: '100%', padding: '12px', background: 'transparent', color: '#555', border: '1px solid #e0dbd5', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', textAlign: 'center', boxSizing: 'border-box' },
 };
