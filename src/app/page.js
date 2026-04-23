@@ -40,7 +40,7 @@ const BANNERS = [
   },
 ];
 
-const PAGE_SIZE = 12;
+const LIMIT = 12;
 
 export default function Home() {
   const [banner,      setBanner]      = useState(0);
@@ -68,20 +68,20 @@ export default function Home() {
   // Carga inicial o cuando cambia categoría
   useEffect(() => {
     setLoading(true);
-    setPagina(1);
+    setPagina(0);
     setHayMas(true);
 
     const params = new URLSearchParams();
-    params.set('page', '1');
-    params.set('pageSize', PAGE_SIZE);
+    params.set('limit', LIMIT);
+    params.set('offset', '0');
     if (catActiva) params.set('categoria', catActiva);
 
     fetch(`/api/productos?${params}`)
       .then((r) => r.json())
       .then((data) => {
-        const lista = data?.productos ?? (Array.isArray(data) ? data : []);
+        const lista = Array.isArray(data) ? data : [];
         setProductos(lista);
-        setHayMas(data?.pagination?.hasNext ?? lista.length >= PAGE_SIZE);
+        if (lista.length < LIMIT) setHayMas(false);
       })
       .catch(() => setProductos([]))
       .finally(() => setLoading(false));
@@ -94,20 +94,20 @@ export default function Home() {
 
     const nuevaPagina = pagina + 1;
     const params = new URLSearchParams();
-    params.set('page', nuevaPagina);
-    params.set('pageSize', PAGE_SIZE);
+    params.set('limit', LIMIT);
+    params.set('offset', nuevaPagina * LIMIT);
     if (catActiva) params.set('categoria', catActiva);
 
     fetch(`/api/productos?${params}`)
       .then((r) => r.json())
       .then((data) => {
-        const lista = data?.productos ?? (Array.isArray(data) ? data : []);
+        const lista = Array.isArray(data) ? data : [];
         setProductos((prev) => {
           const ids = new Set(prev.map(p => p.id));
           return [...prev, ...lista.filter(p => !ids.has(p.id))];
         });
         setPagina(nuevaPagina);
-        setHayMas(data?.pagination?.hasNext ?? lista.length >= PAGE_SIZE);
+        if (lista.length < LIMIT) setHayMas(false);
       })
       .catch(() => {})
       .finally(() => setLoadingMas(false));
@@ -117,7 +117,7 @@ export default function Home() {
 
   const catsMenu = [
     { label: 'Todo', value: '' },
-    ...categorias.slice(0, 5).map((c) => ({ label: c.nombre, value: c.id })),
+    ...categorias.map((c) => ({ label: c.nombre, value: c.id })),
   ];
 
   return (
@@ -296,7 +296,7 @@ export default function Home() {
       {/* ── Grid ── */}
       <div className="hk-grid">
         {loading
-          ? [...Array(PAGE_SIZE)].map((_, i) => (
+          ? [...Array(LIMIT)].map((_, i) => (
               <div key={i} style={{ background: '#f0ede8', aspectRatio: '3/4', animation: 'pulse 1.5s infinite' }} />
             ))
           : productos.map((p) => (

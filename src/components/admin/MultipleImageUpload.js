@@ -70,8 +70,8 @@ export default function MultipleImageUpload({
         continue;
       }
       // ← Cambiado de 5MB a 10MB
-      if (file.size > 10 * 1024 * 1024) {
-        errores.push(`${file.name}: supera 10MB`);
+      if (file.size > 50 * 1024 * 1024) {
+        errores.push(`${file.name}: supera 50MB`);
         continue;
       }
 
@@ -172,7 +172,7 @@ export default function MultipleImageUpload({
                 Hacé click para subir imágenes
               </p>
               <p style={{ fontSize: 11, color: '#aaa', margin: 0 }}>
-                PNG, JPG, WebP · Máx. 10MB por imagen · Hasta {maxImagenes} fotos
+                PNG, JPG, WebP · Máx. 50MB por imagen · Hasta {maxImagenes} fotos
               </p>
             </div>
           </>

@@ -86,7 +86,22 @@ export async function GET(request) {
     // ── WHERE ─────────────────────────────────────────────────
     const where = { activo: true, stock: { gt: 0 } };
 
-    if (categoria)  where.categoriaId = categoria;
+    if (categoria) {
+      // Buscar si la categoría tiene subcategorías e incluirlas
+      try {
+        const cat = await prisma.categoria.findFirst({
+          where:  { id: categoria },
+          select: { id: true, hijos: { select: { id: true } } },
+        });
+        if (cat?.hijos?.length > 0) {
+          where.categoriaId = { in: [categoria, ...cat.hijos.map(h => h.id)] };
+        } else {
+          where.categoriaId = categoria;
+        }
+      } catch {
+        where.categoriaId = categoria;
+      }
+    }
     if (excludeId)  where.id          = { not: excludeId };
     if (destacados) where.destacado   = true;
 
