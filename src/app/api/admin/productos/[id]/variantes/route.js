@@ -15,7 +15,7 @@ export async function GET(_req, { params }) {
 
     const variantes = await prisma.productoVariante.findMany({
       where:   { productoId: id },
-      orderBy: [{ talle: "asc" }, { color: "asc" }],
+      orderBy: [{ createdAt: "asc" }], 
     });
 
     return NextResponse.json({ ok: true, data: variantes });

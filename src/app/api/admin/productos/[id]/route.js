@@ -96,43 +96,21 @@ export async function PUT(req, { params }) {
         include: { categoria: { select: { id: true, nombre: true } } },
       });
 
+      // Borrar todas y recrear — permite reordenar sin conflicto de unique
       if (tieneVariantes && variantes.length > 0) {
-        const idsEnviados = variantes.filter((v) => v.id).map((v) => v.id);
-        if (idsEnviados.length > 0) {
-          await tx.productoVariante.deleteMany({
-            where: { productoId: id, id: { notIn: idsEnviados } },
-          });
-        }
-        for (const v of variantes) {
-          if (v.id) {
-            await tx.productoVariante.update({
-              where: { id: v.id },
-              data: {
-                talle:  v.talle || null,
-                color:  v.color?.trim() || "",
-                stock:  parseInt(v.stock) || 0,
-                precio: v.precio ? parseFloat(v.precio) : null,
-                activo: v.activo ?? true,
-              },
-            });
-          } else {
-            await tx.productoVariante.create({
-              data: {
-                productoId: id,
-                talle:      v.talle || null,
-                color:      v.color?.trim() || "",
-                stock:      parseInt(v.stock) || 0,
-                precio:     v.precio ? parseFloat(v.precio) : null,
-                activo:     true,
-              },
-            });
-          }
-        }
-      } else if (!tieneVariantes) {
-        await tx.productoVariante.updateMany({
-          where: { productoId: id },
-          data:  { activo: false },
+        await tx.productoVariante.deleteMany({ where: { productoId: id } });
+        await tx.productoVariante.createMany({
+          data: variantes.map((v) => ({
+            productoId: id,
+            talle:      v.talle || null,
+            color:      v.color?.trim() || "",
+            stock:      parseInt(v.stock) || 0,
+            precio:     v.precio ? parseFloat(v.precio) : null,
+            activo:     v.activo ?? true,
+          })),
         });
+      } else if (!tieneVariantes) {
+        await tx.productoVariante.deleteMany({ where: { productoId: id } });
       }
 
       return p;
