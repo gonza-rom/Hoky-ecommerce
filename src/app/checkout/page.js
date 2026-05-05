@@ -16,12 +16,16 @@ import PaywayForm from '@/components/PaywayForm';
 import MapaEntregaLocal from '@/components/MapaEntregaLocal';
 
 const DESCUENTO_DEFAULT = 10;
+const DESCUENTO_MARCATON = 20;
 
 function getPrecioItem(item, metodoPago) {
   if (metodoPago === 'efectivo' || metodoPago === 'transferencia') {
     if (item.precioEfectivo) return item.precioEfectivo;
     const descuento = item.descuentoEfectivo ?? DESCUENTO_DEFAULT;
     return Math.round(item.precio * (1 - descuento / 100));
+  }
+  if (metodoPago === 'mercadopago') {
+    return Math.round(item.precio * (1 - DESCUENTO_MARCATON / 100));
   }
   return item.precio;
 }
@@ -65,8 +69,8 @@ function StepBar({ paso }) {
 
 // ── Resumen lateral ─────────────────────────────────────────────────────────
 function ResumenLateral({ cart, subtotal, costoEnvio, total, tipoEnvio, infoEnvio, metodoPago, ahorroTotal, tieneDescuento }) {
-  const [cuponInput,    setCuponInput]    = useState('');
-  const [mostrarCupon,  setMostrarCupon]  = useState(false);
+  const [cuponInput,   setCuponInput]   = useState('');
+  const [mostrarCupon, setMostrarCupon] = useState(false);
 
   return (
     <div className="bg-gray-50 border border-gray-200 rounded-2xl overflow-hidden">
@@ -123,9 +127,9 @@ function ResumenLateral({ cart, subtotal, costoEnvio, total, tipoEnvio, infoEnvi
           <span>Subtotal</span>
           <span>{fmt(subtotal)}</span>
         </div>
-        {tieneDescuento && metodoPago && metodoPago !== 'mercadopago' && metodoPago !== 'payway' && (
+        {tieneDescuento && metodoPago && metodoPago !== 'payway' && (
           <div className="flex justify-between text-sm text-green-600 font-medium">
-            <span>Descuento ({metodoPago})</span>
+            <span>Descuento ({metodoPago === 'mercadopago' ? 'MARCATON' : metodoPago})</span>
             <span>- {fmt(ahorroTotal)}</span>
           </div>
         )}
@@ -140,6 +144,12 @@ function ResumenLateral({ cart, subtotal, costoEnvio, total, tipoEnvio, infoEnvi
              'A calcular'}
           </span>
         </div>
+        {metodoPago === 'mercadopago' && (
+          <div className="flex justify-between text-xs text-sky-600 font-medium">
+            <span>6 cuotas sin interés</span>
+            <span>{fmt(total / 6)} / cuota</span>
+          </div>
+        )}
         <div className="flex justify-between text-base font-bold text-gray-900 pt-2 border-t border-gray-200 mt-1">
           <span>Total</span>
           <span>{fmt(total)}</span>
@@ -244,7 +254,7 @@ export default function CheckoutPage() {
 
   function validarPaso1() {
     const e = {};
-    if (!form.email.trim())    e.email    = 'Requerido';
+    if (!form.email.trim()) e.email = 'Requerido';
     if (!/\S+@\S+\.\S+/.test(form.email)) e.email = 'Email inválido';
     if (!form.codigoPostal.trim()) e.codigoPostal = 'Requerido';
     setErrores(e);
@@ -360,10 +370,10 @@ export default function CheckoutPage() {
   const maxDescuento = cart.length > 0 ? Math.max(...cart.map(i => i.descuentoEfectivo ?? DESCUENTO_DEFAULT)) : DESCUENTO_DEFAULT;
 
   const metodosPago = [
-    { id: 'payway',        icon: CreditCard, label: 'Tarjeta de crédito / débito', desc: 'Próximamente disponible',                                                    badge: null,                  disabled: true  },
-    { id: 'mercadopago',   icon: QrCode,     label: 'MARCATON BNA+',                desc: 'Escaneá el QR con la app del banco',                                         badge: null,                  disabled: false },
-    { id: 'transferencia', icon: Building2,  label: 'Transferencia bancaria',       desc: 'Transferí y envianos el comprobante',                                         badge: `${maxDescuento}% OFF`, disabled: false },
-    { id: 'efectivo',      icon: Banknote,   label: 'Efectivo',                     desc: tipoEnvio === 'retiro' ? 'Al retirar en el local' : 'Al recibir el pedido',   badge: `${maxDescuento}% OFF`, disabled: false },
+    { id: 'payway',        icon: CreditCard, label: 'Tarjeta de crédito / débito', desc: 'Próximamente disponible',                                                  badge: null,                   disabled: true  },
+    { id: 'mercadopago',   icon: QrCode,     label: 'MARCATON BNA+',               desc: '6 cuotas sin interés · Escaneá el QR con la app del banco',               badge: '20% OFF',              disabled: false },
+    { id: 'transferencia', icon: Building2,  label: 'Transferencia bancaria',       desc: 'Transferí y envianos el comprobante',                                      badge: `${maxDescuento}% OFF`, disabled: false },
+    { id: 'efectivo',      icon: Banknote,   label: 'Efectivo',                     desc: tipoEnvio === 'retiro' ? 'Al retirar en el local' : 'Al recibir el pedido', badge: `${maxDescuento}% OFF`, disabled: false },
   ];
 
   function labelBoton() {
@@ -670,7 +680,7 @@ export default function CheckoutPage() {
                             <Icon size={16} className="text-gray-400" />
                           </div>
                           <div className="flex-1">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <span className="text-sm font-semibold text-gray-700">{label}</span>
                               {badge && !disabled && <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{badge}</span>}
                               {disabled && <span className="text-[10px] font-bold bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full">Próximamente</span>}
@@ -681,23 +691,37 @@ export default function CheckoutPage() {
                       ))}
                     </div>
 
-                    {/* ── QR BNA+ ── */}
+                    {/* ── QR MARCATON BNA+ ── */}
                     {metodoPago === 'mercadopago' && (
                       <div className="bg-sky-50 border border-sky-200 rounded-xl p-5 flex flex-col items-center gap-4">
                         <div className="flex items-center gap-2">
                           <QrCode size={16} className="text-sky-600" />
                           <p className="text-xs font-bold text-sky-700 uppercase tracking-wider">Escaneá el QR con MARCATON BNA+</p>
                         </div>
-                        <div className="bg-white rounded-xl border border-sky-200 p-3 shadow-sm">
+                        <div className="bg-white rounded-xl border border-sky-200 p-3">
                           <img
-                            src="/qr.JPEG"
+                            src="/qr.jpeg"
                             alt="QR MARCATON BNA+"
                             className="w-52 h-52 object-contain"
                           />
                         </div>
+                        <div className="w-full bg-sky-100 border border-sky-200 rounded-lg px-4 py-2 flex items-center justify-between">
+                          <span className="text-xs text-sky-700 font-medium">6 cuotas sin interés de</span>
+                          <span className="text-sm font-bold text-sky-800">{fmt(total / 6)}</span>
+                        </div>
+                        <div className="flex gap-3 w-full">
+                          <div className="flex-1 bg-sky-100 rounded-lg px-3 py-2 text-center">
+                            <p className="text-lg font-black text-sky-700">20% OFF</p>
+                            <p className="text-[11px] text-sky-600">en tu compra</p>
+                          </div>
+                          <div className="flex-1 bg-sky-100 rounded-lg px-3 py-2 text-center">
+                            <p className="text-lg font-black text-sky-700">6 CSI</p>
+                            <p className="text-[11px] text-sky-600">cuotas sin interés</p>
+                          </div>
+                        </div>
                         <div className="text-center flex flex-col gap-1">
                           <p className="text-sm font-semibold text-sky-800">
-                            Abrí la app MARCATON BNA+, tocá <span className="font-bold">Escanear</span> y apuntá a este código
+                            Abrí la app <span className="font-black">MARCATON BNA+</span>, tocá <span className="font-bold">Escanear</span> y apuntá a este código
                           </p>
                           <p className="text-xs text-sky-600 leading-relaxed">
                             Una vez realizado el pago, confirmá el pedido y envianos el comprobante por WhatsApp.
@@ -733,11 +757,11 @@ export default function CheckoutPage() {
                     )}
 
                     {/* ── Ahorro ── */}
-                    {tieneDescuento && metodoPago && metodoPago !== 'mercadopago' && metodoPago !== 'payway' && (
+                    {tieneDescuento && metodoPago && metodoPago !== 'payway' && (
                       <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-center gap-2">
                         <Tag size={13} className="text-green-600" />
                         <p className="text-sm text-green-700 font-medium">
-                          Ahorrás <strong>{fmt(ahorroTotal)}</strong> pagando con {metodoPago}
+                          Ahorrás <strong>{fmt(ahorroTotal)}</strong> pagando con {metodoPago === 'mercadopago' ? 'MARCATON BNA+' : metodoPago}
                         </p>
                       </div>
                     )}
