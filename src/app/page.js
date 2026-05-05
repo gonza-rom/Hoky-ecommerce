@@ -20,7 +20,7 @@ const BANNERS = [
   },
   {
     id: 3, eyebrow: 'Exclusivo online', title: 'ENVÍOS\nGRATIS',
-    sub: 'En compras superiores\na $50.000.',
+    sub: 'En compras superiores\na $150.000.',
     cta: 'Aprovechar', href: '/productos', bg: '#0f0f0f', imgBg: '#bbb5ae',
   },
 ];
