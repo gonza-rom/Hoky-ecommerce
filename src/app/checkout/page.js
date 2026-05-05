@@ -700,7 +700,7 @@ export default function CheckoutPage() {
                         </div>
                         <div className="bg-white rounded-xl border border-sky-200 p-3">
                           <img
-                            src="/qr.jpeg"
+                            src="/qr.jpg"
                             alt="QR MARCATON BNA+"
                             className="w-52 h-52 object-contain"
                           />
