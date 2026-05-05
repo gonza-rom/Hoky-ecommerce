@@ -7,7 +7,7 @@ import Link from 'next/link';
 import {
   ArrowLeft, ShoppingBag, Truck, CheckCircle,
   Loader2, AlertCircle, Store,
-  CreditCard, Banknote, Building2, Tag, X,
+  CreditCard, Banknote, Building2, Tag, X, QrCode,
 } from 'lucide-react';
 import { useCart } from '@/context/CartContext';
 import { createClient } from '@/lib/supabase/client';
@@ -29,8 +29,6 @@ function getPrecioItem(item, metodoPago) {
 const fmt = (n) => new Intl.NumberFormat('es-AR', {
   style: 'currency', currency: 'ARS', minimumFractionDigits: 2,
 }).format(n ?? 0);
-
-// Los datos de transferencia vienen de la config del admin (estado configPago)
 
 // ── Barra de pasos ─────────────────────────────────────────────────────────
 function StepBar({ paso }) {
@@ -167,7 +165,7 @@ export default function CheckoutPage() {
   const [metodoPago,         setMetodoPago]         = useState('');
   const [errores,            setErrores]            = useState({});
   const [copiado,            setCopiado]            = useState('');
-  const [pedidoIdConfirmado, setPedidoIdConfirmado] = useState(''); // para Payway
+  const [pedidoIdConfirmado, setPedidoIdConfirmado] = useState('');
   const [configPago,         setConfigPago]         = useState({
     titular: 'Hoky Indumentaria',
     banco:   'Banco Galicia',
@@ -193,8 +191,9 @@ export default function CheckoutPage() {
       })
       .catch(() => {});
   }, []);
-  const [direccionLocal,     setDireccionLocal]     = useState('');
-  const [coordsLocal,        setCoordsLocal]        = useState(null);
+
+  const [direccionLocal, setDireccionLocal] = useState('');
+  const [coordsLocal,    setCoordsLocal]    = useState(null);
 
   const [form, setForm] = useState({
     nombre: '', email: '', telefono: '',
@@ -311,7 +310,6 @@ export default function CheckoutPage() {
         compradorEmail:    form.email.trim(),
         compradorTelefono: form.telefono.trim(),
         notas: form.notas.trim() || null,
-        // Envío a domicilio (correo)
         ...(tipoEnvio === 'envio' && {
           direccion: {
             calle:        form.calle.trim(),
@@ -323,7 +321,6 @@ export default function CheckoutPage() {
             codigoPostal: form.codigoPostal.trim(),
           },
         }),
-        // Envío local (domicilio + coords del mapa)
         ...(tipoEnvio === 'local' && {
           entregaLocal: {
             direccion: direccionLocal,
@@ -344,13 +341,11 @@ export default function CheckoutPage() {
 
       pedidoConfirmado.current = true;
 
-      // Payway → guardar pedidoId y mostrar formulario de tarjeta
       if (metodoPago === 'payway') {
         setPedidoIdConfirmado(data.pedidoId);
-        return; // el carrito se limpia en onSuccess del PaywayForm
+        return;
       }
 
-      // Transferencia / Efectivo
       clearCart();
       router.push(`/checkout/exito?pedido=${data.pedidoId}&metodo=${metodoPago}&total=${total}`);
 
@@ -365,9 +360,10 @@ export default function CheckoutPage() {
   const maxDescuento = cart.length > 0 ? Math.max(...cart.map(i => i.descuentoEfectivo ?? DESCUENTO_DEFAULT)) : DESCUENTO_DEFAULT;
 
   const metodosPago = [
-    { id: 'payway',       icon: CreditCard, label: 'Tarjeta de crédito / débito', desc: 'Próximamente disponible', badge: null, disabled: true },
-    { id: 'transferencia',icon: Building2,  label: 'Transferencia bancaria',      desc: 'Transferí y envianos el comprobante', badge: `${maxDescuento}% OFF` },
-    { id: 'efectivo',     icon: Banknote,   label: 'Efectivo',                    desc: tipoEnvio === 'retiro' ? 'Al retirar en el local' : 'Al recibir el pedido', badge: `${maxDescuento}% OFF` },
+    { id: 'payway',        icon: CreditCard, label: 'Tarjeta de crédito / débito', desc: 'Próximamente disponible',                                                    badge: null,                  disabled: true  },
+    { id: 'mercadopago',   icon: QrCode,     label: 'BNA+ (Mercadito)',             desc: 'Escaneá el QR con la app del banco',                                         badge: null,                  disabled: false },
+    { id: 'transferencia', icon: Building2,  label: 'Transferencia bancaria',       desc: 'Transferí y envianos el comprobante',                                         badge: `${maxDescuento}% OFF`, disabled: false },
+    { id: 'efectivo',      icon: Banknote,   label: 'Efectivo',                     desc: tipoEnvio === 'retiro' ? 'Al retirar en el local' : 'Al recibir el pedido',   badge: `${maxDescuento}% OFF`, disabled: false },
   ];
 
   function labelBoton() {
@@ -627,7 +623,7 @@ export default function CheckoutPage() {
                   <button onClick={() => setPaso(2)} className="text-xs font-semibold text-blue-500 hover:text-blue-700">Cambiar</button>
                 </div>
 
-                {/* ── Formulario Payway (aparece después de crear el pedido) ── */}
+                {/* ── Formulario Payway ── */}
                 {metodoPago === 'payway' && pedidoIdConfirmado ? (
                   <>
                     <h2 className="text-base font-bold text-gray-900">Datos de tarjeta</h2>
@@ -685,7 +681,32 @@ export default function CheckoutPage() {
                       ))}
                     </div>
 
-                    {/* Datos transferencia */}
+                    {/* ── QR BNA+ ── */}
+                    {metodoPago === 'mercadopago' && (
+                      <div className="bg-sky-50 border border-sky-200 rounded-xl p-5 flex flex-col items-center gap-4">
+                        <div className="flex items-center gap-2">
+                          <QrCode size={16} className="text-sky-600" />
+                          <p className="text-xs font-bold text-sky-700 uppercase tracking-wider">Escaneá el QR con BNA+</p>
+                        </div>
+                        <div className="bg-white rounded-xl border border-sky-200 p-3 shadow-sm">
+                          <img
+                            src="/qr.jpeg"
+                            alt="QR BNA+ Mercadito"
+                            className="w-52 h-52 object-contain"
+                          />
+                        </div>
+                        <div className="text-center flex flex-col gap-1">
+                          <p className="text-sm font-semibold text-sky-800">
+                            Abrí la app BNA+, tocá <span className="font-bold">Escanear</span> y apuntá a este código
+                          </p>
+                          <p className="text-xs text-sky-600 leading-relaxed">
+                            Una vez realizado el pago, confirmá el pedido y envianos el comprobante por WhatsApp.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ── Datos transferencia ── */}
                     {metodoPago === 'transferencia' && (
                       <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex flex-col gap-2">
                         <p className="text-xs font-bold text-green-700 uppercase tracking-wider mb-1">Datos para transferir</p>
@@ -711,7 +732,7 @@ export default function CheckoutPage() {
                       </div>
                     )}
 
-                    {/* Ahorro */}
+                    {/* ── Ahorro ── */}
                     {tieneDescuento && metodoPago && metodoPago !== 'mercadopago' && metodoPago !== 'payway' && (
                       <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-center gap-2">
                         <Tag size={13} className="text-green-600" />
