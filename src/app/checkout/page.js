@@ -371,7 +371,7 @@ export default function CheckoutPage() {
 
   const metodosPago = [
     { id: 'payway',        icon: CreditCard, label: 'Tarjeta de crédito / débito', desc: 'Próximamente disponible',                                                  badge: null,                   disabled: true  },
-    { id: 'mercadopago',   icon: QrCode,     label: 'MARCATON BNA+',               desc: '6 cuotas sin interés · Escaneá el QR con la app del banco',               badge: '20% OFF',              disabled: false },
+    { id: 'mercadopago',   icon: QrCode,     label: 'MARCATON BNA+',               desc: '6 cuotas sin interés · Escaneá el QR con la app del banco',               badge: '20% Reintegro',              disabled: false },
     { id: 'transferencia', icon: Building2,  label: 'Transferencia bancaria',       desc: 'Transferí y envianos el comprobante',                                      badge: `${maxDescuento}% OFF`, disabled: false },
     { id: 'efectivo',      icon: Banknote,   label: 'Efectivo',                     desc: tipoEnvio === 'retiro' ? 'Al retirar en el local' : 'Al recibir el pedido', badge: `${maxDescuento}% OFF`, disabled: false },
   ];
@@ -700,7 +700,7 @@ export default function CheckoutPage() {
                         </div>
                         <div className="bg-white rounded-xl border border-sky-200 p-3">
                           <img
-                            src="/qr.jpg"
+                            src="/qr-bna.jpeg"
                             alt="QR MARCATON BNA+"
                             className="w-52 h-52 object-contain"
                           />
@@ -711,7 +711,7 @@ export default function CheckoutPage() {
                         </div>
                         <div className="flex gap-3 w-full">
                           <div className="flex-1 bg-sky-100 rounded-lg px-3 py-2 text-center">
-                            <p className="text-lg font-black text-sky-700">20% OFF</p>
+                            <p className="text-lg font-black text-sky-700">20% de reintegro</p>
                             <p className="text-[11px] text-sky-600">en tu compra</p>
                           </div>
                           <div className="flex-1 bg-sky-100 rounded-lg px-3 py-2 text-center">
