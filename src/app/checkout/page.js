@@ -361,7 +361,7 @@ export default function CheckoutPage() {
 
   const metodosPago = [
     { id: 'payway',        icon: CreditCard, label: 'Tarjeta de crédito / débito', desc: 'Próximamente disponible',                                                    badge: null,                  disabled: true  },
-    { id: 'mercadopago',   icon: QrCode,     label: 'BNA+ (Mercadito)',             desc: 'Escaneá el QR con la app del banco',                                         badge: null,                  disabled: false },
+    { id: 'mercadopago',   icon: QrCode,     label: 'MARCATON BNA+',                desc: 'Escaneá el QR con la app del banco',                                         badge: null,                  disabled: false },
     { id: 'transferencia', icon: Building2,  label: 'Transferencia bancaria',       desc: 'Transferí y envianos el comprobante',                                         badge: `${maxDescuento}% OFF`, disabled: false },
     { id: 'efectivo',      icon: Banknote,   label: 'Efectivo',                     desc: tipoEnvio === 'retiro' ? 'Al retirar en el local' : 'Al recibir el pedido',   badge: `${maxDescuento}% OFF`, disabled: false },
   ];
@@ -686,18 +686,18 @@ export default function CheckoutPage() {
                       <div className="bg-sky-50 border border-sky-200 rounded-xl p-5 flex flex-col items-center gap-4">
                         <div className="flex items-center gap-2">
                           <QrCode size={16} className="text-sky-600" />
-                          <p className="text-xs font-bold text-sky-700 uppercase tracking-wider">Escaneá el QR con BNA+</p>
+                          <p className="text-xs font-bold text-sky-700 uppercase tracking-wider">Escaneá el QR con MARCATON BNA+</p>
                         </div>
                         <div className="bg-white rounded-xl border border-sky-200 p-3 shadow-sm">
                           <img
-                            src="/qr.JPEG"
-                            alt="QR BNA+ MARCATON"
+                            src="/qr.jpeg"
+                            alt="QR MARCATON BNA+"
                             className="w-52 h-52 object-contain"
                           />
                         </div>
                         <div className="text-center flex flex-col gap-1">
                           <p className="text-sm font-semibold text-sky-800">
-                            Abrí la app BNA+, tocá <span className="font-bold">Escanear</span> y apuntá a este código
+                            Abrí la app MARCATON BNA+, tocá <span className="font-bold">Escanear</span> y apuntá a este código
                           </p>
                           <p className="text-xs text-sky-600 leading-relaxed">
                             Una vez realizado el pago, confirmá el pedido y envianos el comprobante por WhatsApp.
