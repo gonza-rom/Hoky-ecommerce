@@ -11,7 +11,7 @@ datasource db {
 
 model Categoria {
   id          String      @id @default(cuid())
-  nombre      String      @unique
+  nombre      String  
   descripcion String?
   imagen      String?
   activo      Boolean     @default(true)
@@ -24,6 +24,7 @@ model Categoria {
   hijos     Categoria[] @relation("SubCategorias")
   productos Producto[]
 
+  @@unique([nombre, parentId])
   @@index([activo])
   @@index([orden])
   @@index([parentId])

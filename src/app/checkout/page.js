@@ -16,7 +16,6 @@ import PaywayForm from '@/components/PaywayForm';
 import MapaEntregaLocal from '@/components/MapaEntregaLocal';
 
 const DESCUENTO_DEFAULT = 10;
-const DESCUENTO_MARCATON = 20;
 
 function getPrecioItem(item, metodoPago) {
   if (metodoPago === 'efectivo' || metodoPago === 'transferencia') {
@@ -24,9 +23,7 @@ function getPrecioItem(item, metodoPago) {
     const descuento = item.descuentoEfectivo ?? DESCUENTO_DEFAULT;
     return Math.round(item.precio * (1 - descuento / 100));
   }
-  if (metodoPago === 'mercadopago') {
-    return Math.round(item.precio * (1 - DESCUENTO_MARCATON / 100));
-  }
+  // mercadopago (MARCATON): precio normal, el reintegro del 20% lo hace el BNA después en el resumen de tarjeta
   return item.precio;
 }
 
@@ -127,12 +124,23 @@ function ResumenLateral({ cart, subtotal, costoEnvio, total, tipoEnvio, infoEnvi
           <span>Subtotal</span>
           <span>{fmt(subtotal)}</span>
         </div>
-        {tieneDescuento && metodoPago && metodoPago !== 'payway' && (
+
+        {/* Descuento solo para efectivo y transferencia */}
+        {tieneDescuento && metodoPago && metodoPago !== 'payway' && metodoPago !== 'mercadopago' && (
           <div className="flex justify-between text-sm text-green-600 font-medium">
-            <span>Descuento ({metodoPago === 'mercadopago' ? 'MARCATON' : metodoPago})</span>
+            <span>Descuento ({metodoPago})</span>
             <span>- {fmt(ahorroTotal)}</span>
           </div>
         )}
+
+        {/* MARCATON: informar reintegro estimado, aclarar que lo hace el banco */}
+        {metodoPago === 'mercadopago' && (
+          <div className="flex justify-between text-xs text-sky-600 font-medium bg-sky-50 border border-sky-100 rounded-lg px-2 py-1.5">
+            <span>Reintegro BNA+ estimado (20%)*</span>
+            <span>+ {fmt(subtotal * 0.20)}</span>
+          </div>
+        )}
+
         <div className="flex justify-between text-sm text-gray-600">
           <span>Envío</span>
           <span className={costoEnvio === 0 && tipoEnvio ? 'text-green-600 font-medium' : ''}>
@@ -144,16 +152,17 @@ function ResumenLateral({ cart, subtotal, costoEnvio, total, tipoEnvio, infoEnvi
              'A calcular'}
           </span>
         </div>
-        {metodoPago === 'mercadopago' && (
-          <div className="flex justify-between text-xs text-sky-600 font-medium">
-            <span>6 cuotas sin interés</span>
-            <span>{fmt(total / 6)} / cuota</span>
-          </div>
-        )}
+
         <div className="flex justify-between text-base font-bold text-gray-900 pt-2 border-t border-gray-200 mt-1">
           <span>Total</span>
           <span>{fmt(total)}</span>
         </div>
+
+        {metodoPago === 'mercadopago' && (
+          <p className="text-[10px] text-gray-400 leading-relaxed">
+            * El reintegro lo acredita el BNA en tu resumen de tarjeta. Tope mensual $80.000. Válido lun, mar y mié.
+          </p>
+        )}
       </div>
     </div>
   );
@@ -371,7 +380,7 @@ export default function CheckoutPage() {
 
   const metodosPago = [
     { id: 'payway',        icon: CreditCard, label: 'Tarjeta de crédito / débito', desc: 'Próximamente disponible',                                                  badge: null,                   disabled: true  },
-    { id: 'mercadopago',   icon: QrCode,     label: 'MARCATON BNA+',               desc: '6 cuotas sin interés · Escaneá el QR con la app del banco',               badge: '20% Reintegro',              disabled: false },
+    { id: 'mercadopago',   icon: QrCode,     label: 'MARCATON BNA+',               desc: '20% de reintegro · Hasta 6 cuotas sin interés',                           badge: '20% Reintegro',        disabled: false },
     { id: 'transferencia', icon: Building2,  label: 'Transferencia bancaria',       desc: 'Transferí y envianos el comprobante',                                      badge: `${maxDescuento}% OFF`, disabled: false },
     { id: 'efectivo',      icon: Banknote,   label: 'Efectivo',                     desc: tipoEnvio === 'retiro' ? 'Al retirar en el local' : 'Al recibir el pedido', badge: `${maxDescuento}% OFF`, disabled: false },
   ];
@@ -682,7 +691,12 @@ export default function CheckoutPage() {
                           <div className="flex-1">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="text-sm font-semibold text-gray-700">{label}</span>
-                              {badge && !disabled && <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{badge}</span>}
+                              {badge && !disabled && id === 'mercadopago' && (
+                                <span className="text-[10px] font-bold bg-sky-100 text-sky-700 px-2 py-0.5 rounded-full">{badge}</span>
+                              )}
+                              {badge && !disabled && id !== 'mercadopago' && (
+                                <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{badge}</span>
+                              )}
                               {disabled && <span className="text-[10px] font-bold bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full">Próximamente</span>}
                             </div>
                             <p className="text-xs text-gray-400 mt-0.5">{desc}</p>
@@ -694,39 +708,67 @@ export default function CheckoutPage() {
                     {/* ── QR MARCATON BNA+ ── */}
                     {metodoPago === 'mercadopago' && (
                       <div className="bg-sky-50 border border-sky-200 rounded-xl p-5 flex flex-col items-center gap-4">
+
+                        {/* Título */}
                         <div className="flex items-center gap-2">
                           <QrCode size={16} className="text-sky-600" />
-                          <p className="text-xs font-bold text-sky-700 uppercase tracking-wider">Escaneá el QR con MARCATON BNA+</p>
+                          <p className="text-xs font-bold text-sky-700 uppercase tracking-wider">Pagá con MARCATON BNA+</p>
                         </div>
-                        <div className="bg-white rounded-xl border border-sky-200 p-3">
+
+                        {/* Beneficios */}
+                        <div className="flex gap-3 w-full">
+                          <div className="flex-1 bg-white border border-sky-200 rounded-xl px-3 py-3 text-center">
+                            <p className="text-2xl font-black text-sky-600">20%</p>
+                            <p className="text-[11px] font-semibold text-sky-700">de reintegro</p>
+                            <p className="text-[10px] text-sky-500 mt-0.5">en tu resumen de tarjeta</p>
+                          </div>
+                          <div className="flex-1 bg-white border border-sky-200 rounded-xl px-3 py-3 text-center">
+                            <p className="text-2xl font-black text-sky-600">6</p>
+                            <p className="text-[11px] font-semibold text-sky-700">cuotas sin interés</p>
+                            <p className="text-[10px] text-sky-500 mt-0.5">{fmt(total / 6)} / cuota</p>
+                          </div>
+                        </div>
+
+                        {/* QR */}
+                        <div className="bg-white rounded-xl border border-sky-200 p-3 shadow-sm">
                           <img
                             src="/qr-bna.jpeg"
                             alt="QR MARCATON BNA+"
                             className="w-52 h-52 object-contain"
                           />
                         </div>
-                        <div className="w-full bg-sky-100 border border-sky-200 rounded-lg px-4 py-2 flex items-center justify-between">
-                          <span className="text-xs text-sky-700 font-medium">6 cuotas sin interés de</span>
-                          <span className="text-sm font-bold text-sky-800">{fmt(total / 6)}</span>
+
+                        {/* Instrucciones paso a paso */}
+                        <div className="w-full bg-white border border-sky-200 rounded-xl px-4 py-3 flex flex-col gap-1.5">
+                          <p className="text-xs font-bold text-sky-800 mb-0.5">¿Cómo pagar?</p>
+                          <ol className="text-xs text-sky-700 flex flex-col gap-1.5 list-none">
+                            <li className="flex items-start gap-2">
+                              <span className="font-bold text-sky-400 flex-shrink-0">1.</span>
+                              Abrí la app <strong>BNA+</strong> y tocá <strong>Escanear QR</strong>
+                            </li>
+                            <li className="flex items-start gap-2">
+                              <span className="font-bold text-sky-400 flex-shrink-0">2.</span>
+                              Ingresá el monto: <strong>{fmt(total)}</strong>
+                            </li>
+                            <li className="flex items-start gap-2">
+                              <span className="font-bold text-sky-400 flex-shrink-0">3.</span>
+                              Seleccioná tu <strong>tarjeta de crédito BNA</strong> y elegí las cuotas
+                            </li>
+                            <li className="flex items-start gap-2">
+                              <span className="font-bold text-sky-400 flex-shrink-0">4.</span>
+                              Confirmá el pedido acá abajo y envianos el comprobante por <strong>WhatsApp</strong>
+                            </li>
+                          </ol>
                         </div>
-                        <div className="flex gap-3 w-full">
-                          <div className="flex-1 bg-sky-100 rounded-lg px-3 py-2 text-center">
-                            <p className="text-lg font-black text-sky-700">20% de reintegro</p>
-                            <p className="text-[11px] text-sky-600">en tu compra</p>
-                          </div>
-                          <div className="flex-1 bg-sky-100 rounded-lg px-3 py-2 text-center">
-                            <p className="text-lg font-black text-sky-700">6 CSI</p>
-                            <p className="text-[11px] text-sky-600">cuotas sin interés</p>
-                          </div>
+
+                        {/* Condiciones legales */}
+                        <div className="w-full flex flex-col gap-0.5">
+                          <p className="text-[10px] text-sky-500 leading-relaxed">• El reintegro del 20% lo acredita el BNA en tu resumen de tarjeta. No se descuenta del precio.</p>
+                          <p className="text-[10px] text-sky-500 leading-relaxed">• Tope de reintegro mensual: <strong>$80.000</strong>.</p>
+                          <p className="text-[10px] text-sky-500 leading-relaxed">• Válido los <strong>lunes, martes y miércoles</strong> durante el período de vigencia.</p>
+                          <p className="text-[10px] text-sky-500 leading-relaxed">• Solo con tarjetas de crédito emitidas por el Banco Nación. No válido con otras billeteras ni plataformas de pago online.</p>
                         </div>
-                        <div className="text-center flex flex-col gap-1">
-                          <p className="text-sm font-semibold text-sky-800">
-                            Abrí la app <span className="font-black">MARCATON BNA+</span>, tocá <span className="font-bold">Escanear</span> y apuntá a este código
-                          </p>
-                          <p className="text-xs text-sky-600 leading-relaxed">
-                            Una vez realizado el pago, confirmá el pedido y envianos el comprobante por WhatsApp.
-                          </p>
-                        </div>
+
                       </div>
                     )}
 
@@ -756,12 +798,12 @@ export default function CheckoutPage() {
                       </div>
                     )}
 
-                    {/* ── Ahorro ── */}
-                    {tieneDescuento && metodoPago && metodoPago !== 'payway' && (
+                    {/* ── Ahorro (solo efectivo y transferencia, NO mercadopago) ── */}
+                    {tieneDescuento && metodoPago && metodoPago !== 'payway' && metodoPago !== 'mercadopago' && (
                       <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-center gap-2">
                         <Tag size={13} className="text-green-600" />
                         <p className="text-sm text-green-700 font-medium">
-                          Ahorrás <strong>{fmt(ahorroTotal)}</strong> pagando con {metodoPago === 'mercadopago' ? 'MARCATON BNA+' : metodoPago}
+                          Ahorrás <strong>{fmt(ahorroTotal)}</strong> pagando con {metodoPago}
                         </p>
                       </div>
                     )}
