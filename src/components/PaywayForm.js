@@ -10,6 +10,7 @@ function detectarTarjeta(numero) {
   if (/^5[1-5]/.test(n)) return { nombre: 'Mastercard', id: 25, color: '#eb001b' };
   if (/^3[47]/.test(n))  return { nombre: 'Amex',       id: 65, color: '#2e77bc' };
   if (/^589562/.test(n)) return { nombre: 'Naranja',    id: 24, color: '#ff6900' };
+  if (/^(603493|527571|527572)/.test(n)) return { nombre: 'Cabal', id: 63, color: '#005aa7' };
   return null;
 }
 

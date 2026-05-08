@@ -109,6 +109,14 @@ export async function POST(request) {
     const result = await res.json();
     console.log('Payway response:', JSON.stringify(result, null, 2));
 
+    // ── Nuevo: detectar error antes de revisar status ──
+    if (result?.error_type || result?.validation_errors?.length) {
+      const motivo = result.validation_errors
+        ?.map(e => `${e.param}: ${e.code}`).join(', ')
+        || result.error_type;
+      return NextResponse.json({ ok: false, status: 'rejected', error: motivo }, { status: 400 });
+    }
+
     const status = result?.status?.toLowerCase();
 
     if (status === 'approved') {

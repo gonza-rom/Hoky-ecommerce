@@ -379,7 +379,7 @@ export default function CheckoutPage() {
   const maxDescuento = cart.length > 0 ? Math.max(...cart.map(i => i.descuentoEfectivo ?? DESCUENTO_DEFAULT)) : DESCUENTO_DEFAULT;
 
   const metodosPago = [
-    { id: 'payway',        icon: CreditCard, label: 'Tarjeta de crédito / débito', desc: 'Próximamente disponible',                                                  badge: null,                   disabled: true  },
+    { id: 'payway',        icon: CreditCard, label: 'Tarjeta de crédito / débito', desc: 'Próximamente disponible',                                                  badge: null,                   disabled: false  },
     { id: 'mercadopago',   icon: QrCode,     label: 'MARCATON BNA+',               desc: '20% de reintegro · Hasta 6 cuotas sin interés',                           badge: '20% Reintegro',        disabled: false },
     { id: 'transferencia', icon: Building2,  label: 'Transferencia bancaria',       desc: 'Transferí y envianos el comprobante',                                      badge: `${maxDescuento}% OFF`, disabled: false },
     { id: 'efectivo',      icon: Banknote,   label: 'Efectivo',                     desc: tipoEnvio === 'retiro' ? 'Al retirar en el local' : 'Al recibir el pedido', badge: `${maxDescuento}% OFF`, disabled: false },
