@@ -23,13 +23,31 @@ function getPrecioItem(item, metodoPago) {
     const descuento = item.descuentoEfectivo ?? DESCUENTO_DEFAULT;
     return Math.round(item.precio * (1 - descuento / 100));
   }
-  // mercadopago (MARCATON): precio normal, el reintegro del 20% lo hace el BNA después en el resumen de tarjeta
   return item.precio;
 }
 
 const fmt = (n) => new Intl.NumberFormat('es-AR', {
   style: 'currency', currency: 'ARS', minimumFractionDigits: 2,
 }).format(n ?? 0);
+
+// ── Ícono Tarjeta Naranja (SVG representativo) ──────────────────────────────
+function IconoNaranja({ size = 20 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="36" height="36" rx="8" fill="#FF6200" />
+      <text
+        x="18"
+        y="25"
+        textAnchor="middle"
+        fontSize="17"
+        fontWeight="900"
+        fontFamily="Arial, sans-serif"
+        fill="white"
+        letterSpacing="-1"
+      >N</text>
+    </svg>
+  );
+}
 
 // ── Barra de pasos ─────────────────────────────────────────────────────────
 function StepBar({ paso }) {
@@ -125,7 +143,6 @@ function ResumenLateral({ cart, subtotal, costoEnvio, total, tipoEnvio, infoEnvi
           <span>{fmt(subtotal)}</span>
         </div>
 
-        {/* Descuento solo para efectivo y transferencia */}
         {tieneDescuento && metodoPago && metodoPago !== 'payway' && metodoPago !== 'mercadopago' && (
           <div className="flex justify-between text-sm text-green-600 font-medium">
             <span>Descuento ({metodoPago})</span>
@@ -133,7 +150,6 @@ function ResumenLateral({ cart, subtotal, costoEnvio, total, tipoEnvio, infoEnvi
           </div>
         )}
 
-        {/* MARCATON: informar reintegro estimado, aclarar que lo hace el banco */}
         {metodoPago === 'mercadopago' && (
           <div className="flex justify-between text-xs text-sky-600 font-medium bg-sky-50 border border-sky-100 rounded-lg px-2 py-1.5">
             <span>Reintegro BNA+ estimado (20%)*</span>
@@ -378,15 +394,52 @@ export default function CheckoutPage() {
 
   const maxDescuento = cart.length > 0 ? Math.max(...cart.map(i => i.descuentoEfectivo ?? DESCUENTO_DEFAULT)) : DESCUENTO_DEFAULT;
 
+  // ── Métodos de pago ────────────────────────────────────────────────────────
   const metodosPago = [
-    { id: 'payway',        icon: CreditCard, label: 'Tarjeta de crédito',         desc: 'Hasta 3 cuotas sin interés',                                               badge: null,                   disabled: false  },
-    { id: 'mercadopago',   icon: QrCode,     label: 'MARCATON BNA+',               desc: '20% de reintegro · Hasta 3 cuotas sin interés',                           badge: '20% Reintegro',        disabled: false },
-    { id: 'transferencia', icon: Building2,  label: 'Transferencia bancaria',       desc: 'Transferí y envianos el comprobante',                                      badge: `${maxDescuento}% OFF`, disabled: false },
-    { id: 'efectivo',      icon: Banknote,   label: 'Efectivo',                     desc: tipoEnvio === 'retiro' ? 'Al retirar en el local' : 'Al recibir el pedido', badge: `${maxDescuento}% OFF`, disabled: false },
+    {
+      id:         'payway',
+      icon:       null,
+      iconCustom: <IconoNaranja size={20} />,
+      label:      'Plan Z · Tarjeta Naranja',
+      desc:       '3 cuotas sin interés',
+      badge:      '3 cuotas',
+      badgeColor: 'bg-orange-100 text-orange-700',
+      disabled:   false,
+    },
+    {
+      id:         'mercadopago',
+      icon:       QrCode,
+      iconCustom: null,
+      label:      'MARCATON BNA+',
+      desc:       '20% de reintegro · Hasta 3 cuotas sin interés',
+      badge:      '20% Reintegro',
+      badgeColor: 'bg-sky-100 text-sky-700',
+      disabled:   false,
+    },
+    {
+      id:         'transferencia',
+      icon:       Building2,
+      iconCustom: null,
+      label:      'Transferencia bancaria',
+      desc:       'Transferí y envianos el comprobante',
+      badge:      `${maxDescuento}% OFF`,
+      badgeColor: 'bg-green-100 text-green-700',
+      disabled:   false,
+    },
+    {
+      id:         'efectivo',
+      icon:       Banknote,
+      iconCustom: null,
+      label:      'Efectivo',
+      desc:       tipoEnvio === 'retiro' ? 'Al retirar en el local' : 'Al recibir el pedido',
+      badge:      `${maxDescuento}% OFF`,
+      badgeColor: 'bg-green-100 text-green-700',
+      disabled:   false,
+    },
   ];
 
   function labelBoton() {
-    if (metodoPago === 'payway') return `Continuar con tarjeta · ${fmt(total)}`;
+    if (metodoPago === 'payway') return `Continuar con Tarjeta Naranja · ${fmt(total)}`;
     return `Confirmar pedido · ${fmt(total)}`;
   }
 
@@ -675,7 +728,7 @@ export default function CheckoutPage() {
                     {errores.metodoPago && <p className="text-xs text-red-500">{errores.metodoPago}</p>}
 
                     <div className="flex flex-col gap-2">
-                      {metodosPago.map(({ id, icon: Icon, label, desc, badge, disabled }) => (
+                      {metodosPago.map(({ id, icon: Icon, iconCustom, label, desc, badge, badgeColor, disabled }) => (
                         <label key={id} className={`flex items-center gap-3 p-4 border-2 rounded-xl transition-all ${
                           disabled
                             ? 'border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed'
@@ -685,19 +738,24 @@ export default function CheckoutPage() {
                         }`}>
                           <input type="radio" name="pago" value={id} checked={metodoPago === id}
                             onChange={() => !disabled && setMetodoPago(id)} disabled={disabled} />
-                          <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
-                            <Icon size={16} className="text-gray-400" />
+
+                          {/* Ícono: SVG custom o lucide */}
+                          <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                            {iconCustom
+                              ? iconCustom
+                              : Icon ? <Icon size={16} className="text-gray-400" /> : null
+                            }
                           </div>
+
                           <div className="flex-1">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="text-sm font-semibold text-gray-700">{label}</span>
-                              {badge && !disabled && id === 'mercadopago' && (
-                                <span className="text-[10px] font-bold bg-sky-100 text-sky-700 px-2 py-0.5 rounded-full">{badge}</span>
+                              {badge && !disabled && (
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${badgeColor}`}>{badge}</span>
                               )}
-                              {badge && !disabled && id !== 'mercadopago' && (
-                                <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{badge}</span>
+                              {disabled && (
+                                <span className="text-[10px] font-bold bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full">Próximamente</span>
                               )}
-                              {disabled && <span className="text-[10px] font-bold bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full">Próximamente</span>}
                             </div>
                             <p className="text-xs text-gray-400 mt-0.5">{desc}</p>
                           </div>
@@ -708,14 +766,11 @@ export default function CheckoutPage() {
                     {/* ── QR MARCATON BNA+ ── */}
                     {metodoPago === 'mercadopago' && (
                       <div className="bg-sky-50 border border-sky-200 rounded-xl p-5 flex flex-col items-center gap-4">
-
-                        {/* Título */}
                         <div className="flex items-center gap-2">
                           <QrCode size={16} className="text-sky-600" />
                           <p className="text-xs font-bold text-sky-700 uppercase tracking-wider">Pagá con MARCATON BNA+</p>
                         </div>
 
-                        {/* Beneficios */}
                         <div className="flex gap-3 w-full">
                           <div className="flex-1 bg-white border border-sky-200 rounded-xl px-3 py-3 text-center">
                             <p className="text-2xl font-black text-sky-600">20%</p>
@@ -729,16 +784,10 @@ export default function CheckoutPage() {
                           </div>
                         </div>
 
-                        {/* QR */}
                         <div className="bg-white rounded-xl border border-sky-200 p-3 shadow-sm">
-                          <img
-                            src="/qr-bna.jpeg"
-                            alt="QR MARCATON BNA+"
-                            className="w-52 h-52 object-contain"
-                          />
+                          <img src="/qr-bna.jpeg" alt="QR MARCATON BNA+" className="w-52 h-52 object-contain" />
                         </div>
 
-                        {/* Instrucciones paso a paso */}
                         <div className="w-full bg-white border border-sky-200 rounded-xl px-4 py-3 flex flex-col gap-1.5">
                           <p className="text-xs font-bold text-sky-800 mb-0.5">¿Cómo pagar?</p>
                           <ol className="text-xs text-sky-700 flex flex-col gap-1.5 list-none">
@@ -761,14 +810,12 @@ export default function CheckoutPage() {
                           </ol>
                         </div>
 
-                        {/* Condiciones legales */}
                         <div className="w-full flex flex-col gap-0.5">
                           <p className="text-[10px] text-sky-500 leading-relaxed">• El reintegro del 20% lo acredita el BNA en tu resumen de tarjeta. No se descuenta del precio.</p>
                           <p className="text-[10px] text-sky-500 leading-relaxed">• Tope de reintegro mensual: <strong>$80.000</strong>.</p>
                           <p className="text-[10px] text-sky-500 leading-relaxed">• Válido los <strong>lunes, martes y miércoles</strong> durante el período de vigencia.</p>
                           <p className="text-[10px] text-sky-500 leading-relaxed">• Solo con tarjetas de crédito emitidas por el Banco Nación. No válido con otras billeteras ni plataformas de pago online.</p>
                         </div>
-
                       </div>
                     )}
 
@@ -798,7 +845,7 @@ export default function CheckoutPage() {
                       </div>
                     )}
 
-                    {/* ── Ahorro (solo efectivo y transferencia, NO mercadopago) ── */}
+                    {/* ── Ahorro (solo efectivo y transferencia) ── */}
                     {tieneDescuento && metodoPago && metodoPago !== 'payway' && metodoPago !== 'mercadopago' && (
                       <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-center gap-2">
                         <Tag size={13} className="text-green-600" />
