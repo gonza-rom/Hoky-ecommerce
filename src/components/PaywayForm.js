@@ -6,12 +6,10 @@ import { CreditCard, Lock, Loader2, AlertCircle } from 'lucide-react';
 
 function detectarTarjeta(numero) {
   const n = numero.replace(/\s/g, '');
-  if (/^4/.test(n))      return { nombre: 'Visa',       id: 1,  color: '#1a1f71' };
-  if (/^5[1-5]/.test(n)) return { nombre: 'Mastercard', id: 25, color: '#eb001b' };
-  if (/^3[47]/.test(n))  return { nombre: 'Amex',       id: 65, color: '#2e77bc' };
-  if (/^589562/.test(n)) return { nombre: 'Naranja',    id: 24, color: '#ff6900' };
-  if (/^(603493|527571|527572)/.test(n)) return { nombre: 'Cabal', id: 63, color: '#005aa7' };
-  return null;
+  if (/^589562|^402917|^402918|^527571|^527572|^546553|^554530/.test(n))
+    return { nombre: 'Naranja', id: 24, color: '#FF6200' };
+  // Fallback — intentar con 24 igual
+  return { nombre: 'Naranja', id: 24, color: '#FF6200' };
 }
 
 function formatearNumero(value) {
@@ -120,7 +118,7 @@ export default function PaywayForm({ total, pedidoId, compradorEmail, compradorN
           pedidoId,
           token,
           bin,
-          paymentMethodId: tarjeta?.id || 1,
+          paymentMethodId: 24,
           installments:    cuotas,
           total,
           compradorEmail,
@@ -236,8 +234,8 @@ export default function PaywayForm({ total, pedidoId, compradorEmail, compradorN
       <div>
         <label className="block text-xs font-semibold text-gray-500 mb-1.5">Cuotas</label>
         <select value={cuotas} onChange={e => setCuotas(Number(e.target.value))} className={inp + ' bg-white'}>
-          <option value={1}>1 cuota sin interés</option>
-          <option value={3}>3 cuotas sin interés</option>
+          <option value={1}>1 cuota sin interés — {fmt(total)}</option>
+          <option value={11}>3 cuotas sin interés — {fmt(total / 3)} / mes (Plan Z)</option>
         </select>
       </div>
 
@@ -261,7 +259,7 @@ export default function PaywayForm({ total, pedidoId, compradorEmail, compradorN
         {loading
           ? <><Loader2 size={16} className="animate-spin" /> Procesando pago...</>
           : sdkListo
-            ? `Pagar con tarjeta · ${fmt(total)}`
+            ? `Pagar con Naranja · ${fmt(total)}`
             : 'Cargando...'
         }
       </button>

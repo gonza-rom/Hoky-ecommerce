@@ -52,7 +52,7 @@ export async function POST(request) {
       site_transaction_id: pedidoId,
       token,
       user_id:            compradorEmail || 'guest',
-      payment_method_id:  paymentMethodId || 1,
+      payment_method_id:  24,           
       bin:                bin || '',
       amount,
       currency:           'ARS',
