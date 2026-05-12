@@ -36,6 +36,64 @@ function useDebounce(value, delay) {
   return debounced;
 }
 
+// ── Slider de precio doble ────────────────────────────────────────────────────
+function PriceRange({ min, max, value, onChange }) {
+  const [local, setLocal] = useState(value);
+
+  useEffect(() => { setLocal(value); }, [value]);
+
+  const fmt = (n) =>
+    new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n);
+
+  const handleMin = (e) => {
+    const v = Math.min(parseInt(e.target.value), local[1] - 1000);
+    setLocal([v, local[1]]);
+  };
+  const handleMax = (e) => {
+    const v = Math.max(parseInt(e.target.value), local[0] + 1000);
+    setLocal([local[0], v]);
+  };
+  const commit = () => onChange(local);
+
+  const pctMin = ((local[0] - min) / (max - min)) * 100;
+  const pctMax = ((local[1] - min) / (max - min)) * 100;
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: '#555' }}>{fmt(local[0])}</span>
+        <span style={{ fontSize: 11, fontWeight: 700, color: '#555' }}>{fmt(local[1])}</span>
+      </div>
+      <div style={{ position: 'relative', height: 6, borderRadius: 3, background: '#e0dbd5', marginBottom: 12 }}>
+        <div style={{
+          position: 'absolute', height: '100%', borderRadius: 3, background: '#111',
+          left: `${pctMin}%`, right: `${100 - pctMax}%`,
+        }} />
+        <input type="range" min={min} max={max} step={1000}
+          value={local[0]} onChange={handleMin} onMouseUp={commit} onTouchEnd={commit}
+          style={{ position: 'absolute', width: '100%', height: '100%', opacity: 0, cursor: 'pointer', zIndex: 3 }} />
+        <input type="range" min={min} max={max} step={1000}
+          value={local[1]} onChange={handleMax} onMouseUp={commit} onTouchEnd={commit}
+          style={{ position: 'absolute', width: '100%', height: '100%', opacity: 0, cursor: 'pointer', zIndex: 4 }} />
+        {/* Thumbs */}
+        <div style={{
+          position: 'absolute', width: 14, height: 14, background: '#111', borderRadius: '50%',
+          border: '2px solid #fff', boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
+          left: `${pctMin}%`, top: '50%', transform: 'translate(-50%, -50%)',
+          zIndex: 2, pointerEvents: 'none',
+        }} />
+        <div style={{
+          position: 'absolute', width: 14, height: 14, background: '#111', borderRadius: '50%',
+          border: '2px solid #fff', boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
+          left: `${pctMax}%`, top: '50%', transform: 'translate(-50%, -50%)',
+          zIndex: 2, pointerEvents: 'none',
+        }} />
+      </div>
+    </div>
+  );
+}
+
+// ── Sección colapsable ────────────────────────────────────────────────────────
 function FilterSection({ titulo, children, defaultOpen = true }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
@@ -50,6 +108,22 @@ function FilterSection({ titulo, children, defaultOpen = true }) {
       </button>
       {open && children}
     </div>
+  );
+}
+
+// ── Tag de filtro activo ──────────────────────────────────────────────────────
+function Tag({ label, onRemove }) {
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 5,
+      background: '#f0ede8', color: '#555', padding: '4px 10px',
+      borderRadius: 20, fontSize: 11, fontWeight: 600,
+    }}>
+      {label}
+      <button onClick={onRemove} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', color: '#aaa' }}>
+        <X size={11} />
+      </button>
+    </span>
   );
 }
 
@@ -157,6 +231,14 @@ export default function Home() {
   const hayFiltros = !!(catActiva || busquedaInput || ordenar || tallesActivos.length || coloresActivos.length
     || precioRange[0] > rangoPrecios.min || precioRange[1] < rangoPrecios.max);
 
+  const cantFiltros = [
+    catActiva ? 1 : 0,
+    ordenar ? 1 : 0,
+    tallesActivos.length,
+    coloresActivos.length,
+    (precioRange[0] > rangoPrecios.min || precioRange[1] < rangoPrecios.max) ? 1 : 0,
+  ].reduce((a, b) => a + b, 0);
+
   const toggleTalle = (t) => setTallesActivos(p => p.includes(t) ? p.filter(x => x !== t) : [...p, t]);
   const toggleColor = (c) => setColoresActivos(p => p.includes(c) ? p.filter(x => x !== c) : [...p, c]);
   const fmtP = (n) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n);
@@ -165,100 +247,122 @@ export default function Home() {
 
   const catsMenu = [
     { label: 'Todo', value: '' },
-    ...categorias.map(c => ({ label: c.nombre, value: c.id })),
+    ...categorias.map(c => ({ label: c.nombre, value: String(c.id), hijos: c.hijos ?? [] })),
   ];
 
-  function DrawerFiltros() {
+  // ── Contenido del drawer ──────────────────────────────────────────────────
+  function DrawerContent() {
     return (
-      <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex' }}>
-        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)' }} onClick={() => setMostrarFiltros(false)} />
-        <div style={{ position: 'relative', marginLeft: 'auto', width: 300, maxWidth: '90vw', background: '#fff', height: '100%', overflowY: 'auto', padding: 20, boxShadow: '-4px 0 24px rgba(0,0,0,0.15)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-            <span style={{ fontSize: 14, fontWeight: 700 }}>Filtros</span>
-            <button onClick={() => setMostrarFiltros(false)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
-              <X size={20} color="#aaa" />
-            </button>
+      <>
+        <FilterSection titulo="Buscar">
+          <div style={{ position: 'relative' }}>
+            <Search size={12} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: '#bbb' }} />
+            <input value={busquedaInput} onChange={e => setBusquedaInput(e.target.value)} placeholder="Buscar productos..."
+              style={{ width: '100%', padding: '8px 28px 8px 26px', border: '1px solid #e0dbd5', borderRadius: 8, fontSize: 12, outline: 'none', boxSizing: 'border-box' }} />
+            {busquedaInput && (
+              <button onClick={() => setBusquedaInput('')} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex' }}>
+                <X size={12} color="#bbb" />
+              </button>
+            )}
           </div>
+        </FilterSection>
 
-          {hayFiltros && (
-            <button onClick={limpiarFiltros} style={{ width: '100%', marginBottom: 12, padding: '7px', border: '1px solid #e0dbd5', borderRadius: 8, background: 'transparent', fontSize: 11, cursor: 'pointer', color: '#888' }}>
-              Limpiar filtros
-            </button>
-          )}
+        <FilterSection titulo="Categoría">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {/* "Todo" */}
+            <button onClick={() => setCatActiva('')} style={{
+              padding: '6px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: 12,
+              background: catActiva === '' ? '#111' : 'transparent',
+              color: catActiva === '' ? '#fff' : '#555', fontWeight: catActiva === '' ? 700 : 400,
+            }}>Todo</button>
 
-          <FilterSection titulo="Buscar">
-            <div style={{ position: 'relative' }}>
-              <Search size={12} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: '#bbb' }} />
-              <input value={busquedaInput} onChange={e => setBusquedaInput(e.target.value)} placeholder="Buscar productos..."
-                style={{ width: '100%', padding: '8px 8px 8px 26px', border: '1px solid #e0dbd5', borderRadius: 8, fontSize: 12, outline: 'none', boxSizing: 'border-box' }} />
-            </div>
-          </FilterSection>
+            {/* Categorías raíz con subcategorías */}
+            {categorias.map(cat => (
+              <div key={cat.id}>
+                <button onClick={() => setCatActiva(String(cat.id))} style={{
+                  padding: '6px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: 12, width: '100%',
+                  background: catActiva === String(cat.id) ? '#111' : 'transparent',
+                  color: catActiva === String(cat.id) ? '#fff' : '#555', fontWeight: 600,
+                }}>
+                  <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>{cat.nombre}</span>
+                    {cat._count?.productos !== undefined && (
+                      <span style={{ opacity: 0.5, fontSize: 11 }}>({cat._count.productos})</span>
+                    )}
+                  </span>
+                </button>
+                {/* Subcategorías */}
+                {cat.hijos?.length > 0 && (
+                  <div style={{ marginLeft: 10, marginTop: 2, paddingLeft: 8, borderLeft: '2px solid #f0ede8', display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    {cat.hijos.map(hijo => (
+                      <button key={hijo.id} onClick={() => setCatActiva(String(hijo.id))} style={{
+                        padding: '5px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: 11, width: '100%',
+                        background: catActiva === String(hijo.id) ? '#333' : 'transparent',
+                        color: catActiva === String(hijo.id) ? '#fff' : '#888',
+                      }}>
+                        <span style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span>{hijo.nombre}</span>
+                          {hijo._count?.productos !== undefined && (
+                            <span style={{ opacity: 0.5 }}>({hijo._count.productos})</span>
+                          )}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </FilterSection>
 
-          <FilterSection titulo="Categoría">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {catsMenu.map(cat => (
-                <button key={cat.value} onClick={() => { setCatActiva(cat.value); }} style={{
-                  padding: '6px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: 12,
-                  background: catActiva === cat.value ? '#111' : 'transparent',
-                  color: catActiva === cat.value ? '#fff' : '#555', fontWeight: catActiva === cat.value ? 700 : 400,
-                }}>{cat.label}</button>
+        {tallesDisp.length > 0 && (
+          <FilterSection titulo="Talle">
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {tallesDisp.map(t => (
+                <button key={t} onClick={() => toggleTalle(t)} style={{
+                  padding: '5px 10px', fontSize: 11, fontWeight: 700, borderRadius: 4, cursor: 'pointer',
+                  border: tallesActivos.includes(t) ? '2px solid #111' : '1px solid #e0dbd5',
+                  background: tallesActivos.includes(t) ? '#111' : '#fff',
+                  color: tallesActivos.includes(t) ? '#fff' : '#555',
+                }}>{t}</button>
               ))}
             </div>
           </FilterSection>
+        )}
 
-          {tallesDisp.length > 0 && (
-            <FilterSection titulo="Talle">
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {tallesDisp.map(t => (
-                  <button key={t} onClick={() => toggleTalle(t)} style={{
-                    padding: '5px 10px', fontSize: 11, fontWeight: 700, borderRadius: 4, cursor: 'pointer',
-                    border: tallesActivos.includes(t) ? '2px solid #111' : '1px solid #e0dbd5',
-                    background: tallesActivos.includes(t) ? '#111' : '#fff',
-                    color: tallesActivos.includes(t) ? '#fff' : '#555',
-                  }}>{t}</button>
-                ))}
-              </div>
-            </FilterSection>
-          )}
-
-          {coloresDisp.length > 0 && (
-            <FilterSection titulo="Color">
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {coloresDisp.map(c => (
-                  <button key={c} onClick={() => toggleColor(c)} style={{
-                    padding: '5px 10px', fontSize: 11, fontWeight: 600, borderRadius: 20, cursor: 'pointer', textTransform: 'capitalize',
-                    border: coloresActivos.includes(c) ? '2px solid #111' : '1px solid #e0dbd5',
-                    background: coloresActivos.includes(c) ? '#111' : '#fff',
-                    color: coloresActivos.includes(c) ? '#fff' : '#555',
-                  }}>{c}</button>
-                ))}
-              </div>
-            </FilterSection>
-          )}
-
-          <FilterSection titulo="Precio">
-            <div style={{ fontSize: 12, display: 'flex', justifyContent: 'space-between', marginBottom: 8, color: '#555' }}>
-              <span>{fmtP(precioRange[0])}</span><span>{fmtP(precioRange[1])}</span>
+        {coloresDisp.length > 0 && (
+          <FilterSection titulo="Color">
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {coloresDisp.map(c => (
+                <button key={c} onClick={() => toggleColor(c)} style={{
+                  padding: '5px 10px', fontSize: 11, fontWeight: 600, borderRadius: 20, cursor: 'pointer', textTransform: 'capitalize',
+                  border: coloresActivos.includes(c) ? '2px solid #111' : '1px solid #e0dbd5',
+                  background: coloresActivos.includes(c) ? '#111' : '#fff',
+                  color: coloresActivos.includes(c) ? '#fff' : '#555',
+                }}>{c}</button>
+              ))}
             </div>
-            <input type="range" min={rangoPrecios.min} max={rangoPrecios.max} step={1000}
-              value={precioRange[1]} onChange={e => setPrecioRange([precioRange[0], parseInt(e.target.value)])}
-              style={{ width: '100%', accentColor: '#111' }} />
           </FilterSection>
+        )}
 
-          <FilterSection titulo="Ordenar" defaultOpen={false}>
-            <select value={ordenar} onChange={e => setOrdenar(e.target.value)} style={{ width: '100%', padding: '8px 10px', border: '1px solid #e0dbd5', borderRadius: 8, fontSize: 12, outline: 'none', background: '#fff', color: '#111' }}>
-              <option value="">Más recientes</option>
-              <option value="nombre">Nombre A-Z</option>
-              <option value="precio-asc">Menor precio</option>
-              <option value="precio-desc">Mayor precio</option>
-            </select>
-          </FilterSection>
+        <FilterSection titulo="Precio">
+          <PriceRange
+            min={rangoPrecios.min}
+            max={rangoPrecios.max}
+            value={precioRange}
+            onChange={setPrecioRange}
+          />
+        </FilterSection>
 
-          <button onClick={() => setMostrarFiltros(false)} style={{ width: '100%', marginTop: 16, padding: '12px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-            Ver productos
-          </button>
-        </div>
-      </div>
+        <FilterSection titulo="Ordenar" defaultOpen={false}>
+          <select value={ordenar} onChange={e => setOrdenar(e.target.value)} style={{ width: '100%', padding: '8px 10px', border: '1px solid #e0dbd5', borderRadius: 8, fontSize: 12, outline: 'none', background: '#fff', color: '#111' }}>
+            <option value="">Más recientes</option>
+            <option value="nombre">Nombre A-Z</option>
+            <option value="precio-asc">Menor precio</option>
+            <option value="precio-desc">Mayor precio</option>
+          </select>
+        </FilterSection>
+      </>
     );
   }
 
@@ -283,6 +387,8 @@ export default function Home() {
         .hk-cats { display: flex; gap: 8px; padding: 14px 16px 0; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
         .hk-cats::-webkit-scrollbar { display: none; }
         @media (min-width: 768px) { .hk-cats { padding: 18px 28px 0; } }
+        .hk-active-tags { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 16px 0; }
+        @media (min-width: 768px) { .hk-active-tags { padding: 10px 28px 0; } }
         .hk-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; padding: 16px; }
         @media (min-width: 480px) { .hk-grid { grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 16px 20px; } }
         @media (min-width: 768px) { .hk-grid { grid-template-columns: repeat(4, 1fr); padding: 20px 28px; } }
@@ -342,8 +448,18 @@ export default function Home() {
             border: `1px solid ${hayFiltros ? '#111' : '#e0dbd5'}`,
             borderRadius: 8, background: hayFiltros ? '#111' : '#fff',
             color: hayFiltros ? '#fff' : '#555', fontSize: 11, cursor: 'pointer', fontWeight: 600,
+            position: 'relative',
           }}>
-            <SlidersHorizontal size={13} /> Filtros{hayFiltros ? ' ●' : ''}
+            <SlidersHorizontal size={13} />
+            Filtros
+            {cantFiltros > 0 && (
+              <span style={{
+                position: 'absolute', top: -6, right: -6,
+                background: '#e53e3e', color: '#fff', borderRadius: '50%',
+                width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 9, fontWeight: 700,
+              }}>{cantFiltros}</span>
+            )}
           </button>
           <Link href="/productos" style={{ fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#888', textDecoration: 'none' }}>
             Ver todos →
@@ -351,7 +467,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Filtro categorías (pill bar — diseño original) */}
+      {/* Filtro categorías (pill bar) */}
       <div className="hk-cats">
         {catsMenu.map(cat => (
           <button key={cat.value} onClick={() => setCatActiva(cat.value)} style={{
@@ -367,6 +483,41 @@ export default function Home() {
         ))}
       </div>
 
+      {/* Tags de filtros activos */}
+      {hayFiltros && (
+        <div className="hk-active-tags">
+          {busqueda && (
+            <Tag label={`"${busqueda}"`} onRemove={() => setBusquedaInput('')} />
+          )}
+          {catActiva && (
+            <Tag
+              label={categorias.find(c => String(c.id) === catActiva)?.nombre
+                ?? categorias.flatMap(c => c.hijos ?? []).find(h => String(h.id) === catActiva)?.nombre
+                ?? 'Categoría'}
+              onRemove={() => setCatActiva('')}
+            />
+          )}
+          {tallesActivos.map(t => (
+            <Tag key={t} label={`T: ${t}`} onRemove={() => toggleTalle(t)} />
+          ))}
+          {coloresActivos.map(c => (
+            <Tag key={c} label={c} onRemove={() => toggleColor(c)} />
+          ))}
+          {(precioRange[0] > rangoPrecios.min || precioRange[1] < rangoPrecios.max) && (
+            <Tag
+              label={`${fmtP(precioRange[0])} – ${fmtP(precioRange[1])}`}
+              onRemove={() => setPrecioRange([rangoPrecios.min, rangoPrecios.max])}
+            />
+          )}
+          {ordenar && (
+            <Tag
+              label={{ nombre: 'A-Z', 'precio-asc': 'Menor precio', 'precio-desc': 'Mayor precio' }[ordenar] ?? ordenar}
+              onRemove={() => setOrdenar('')}
+            />
+          )}
+        </div>
+      )}
+
       {/* Grid */}
       <div className="hk-grid">
         {loading
@@ -379,6 +530,9 @@ export default function Home() {
           <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '48px 0', color: '#aaa' }}>
             <ShoppingBag size={40} style={{ opacity: 0.3, marginBottom: 12 }} />
             <p style={{ fontSize: 14, letterSpacing: '0.1em', textTransform: 'uppercase' }}>No hay productos disponibles</p>
+            <button onClick={limpiarFiltros} style={{ marginTop: 12, background: '#111', color: '#fff', border: 'none', padding: '10px 24px', borderRadius: 8, fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', cursor: 'pointer', fontWeight: 700 }}>
+              Limpiar filtros
+            </button>
           </div>
         )}
       </div>
@@ -415,7 +569,31 @@ export default function Home() {
       </div>
 
       {/* Drawer filtros */}
-      {mostrarFiltros && <DrawerFiltros />}
+      {mostrarFiltros && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex' }}>
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)' }} onClick={() => setMostrarFiltros(false)} />
+          <div style={{ position: 'relative', marginLeft: 'auto', width: 300, maxWidth: '90vw', background: '#fff', height: '100%', overflowY: 'auto', padding: 20, boxShadow: '-4px 0 24px rgba(0,0,0,0.15)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <span style={{ fontSize: 14, fontWeight: 700 }}>Filtros</span>
+              <button onClick={() => setMostrarFiltros(false)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+                <X size={20} color="#aaa" />
+              </button>
+            </div>
+
+            {hayFiltros && (
+              <button onClick={limpiarFiltros} style={{ width: '100%', marginBottom: 12, padding: '7px', border: '1px solid #e0dbd5', borderRadius: 8, background: 'transparent', fontSize: 11, cursor: 'pointer', color: '#888' }}>
+                Limpiar filtros
+              </button>
+            )}
+
+            <DrawerContent />
+
+            <button onClick={() => setMostrarFiltros(false)} style={{ width: '100%', marginTop: 16, padding: '12px', background: '#111', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+              Ver productos
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
