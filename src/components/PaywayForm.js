@@ -42,13 +42,11 @@ export default function PaywayForm({ total, pedidoId, compradorEmail, compradorN
   const [deviceFingerprint, setDeviceFingerprint] = useState('');
   const formRef = useRef(null);
 
-  // Generar fingerprint único del dispositivo
   const tarjeta   = detectarTarjeta(numero);
   const bin       = numero.replace(/\s/g, '').slice(0, 6);
   const publicKey = process.env.NEXT_PUBLIC_PAYWAY_PUBLIC_KEY;
   const isProd    = process.env.NEXT_PUBLIC_PAYWAY_ENVIRONMENT === 'production';
 
-  // URLs correctas según la doc oficial de Payway
   const urlPayway = isProd
     ? 'https://ventasonline.payway.com.ar/api/v2'
     : 'https://developers-ventasonline.payway.com.ar/api/v2';
@@ -58,13 +56,10 @@ export default function PaywayForm({ total, pedidoId, compradorEmail, compradorN
     if (window.Decidir) { setSdkListo(true); return; }
     if (document.getElementById('payway-sdk')) return;
 
-    // Script oficial de Payway Ventas Online
-    // Generar Device Fingerprint con script oficial de Cybersource/Payway
     const sessionId = pedidoId || Math.random().toString(36).slice(2);
     setDeviceFingerprint(sessionId);
 
-    // Cargar el script de Cybersource para device fingerprinting
-    const orgId = '1snn5n9w'; // Org ID de Cybersource para Payway producción
+    const orgId = '1snn5n9w';
     const csImg = document.createElement('img');
     csImg.src = `https://h.online-metrix.net/fp/clear.png?org_id=${orgId}&session_id=${sessionId}&m=1`;
     csImg.style.display = 'none';
@@ -99,7 +94,6 @@ export default function PaywayForm({ total, pedidoId, compradorEmail, compradorN
 
     try {
       const token = await new Promise((resolve, reject) => {
-        // inhabilitarCS = true → desactiva Cybersource (evita el llamado a frauddetectionconf)
         const inhabilitarCS = true;
         const siteId = process.env.NEXT_PUBLIC_PAYWAY_SITE_ID || '93021573';
         const decidir = new window.Decidir(urlPayway, inhabilitarCS);
@@ -119,7 +113,6 @@ export default function PaywayForm({ total, pedidoId, compradorEmail, compradorN
         });
       });
 
-      // Enviar token al backend para procesar el pago
       const res = await fetch('/api/payway/pago', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -160,7 +153,6 @@ export default function PaywayForm({ total, pedidoId, compradorEmail, compradorN
   return (
     <form ref={formRef} onSubmit={pagar} className="flex flex-col gap-4">
 
-      {/* Inputs ocultos con data-decidir — el SDK los lee del formRef */}
       <input type="hidden" data-decidir="card_number"            value={numero.replace(/\s/g, '')}  readOnly />
       <input type="hidden" data-decidir="card_expiration_month"  value={vto.split('/')[0] || ''}    readOnly />
       <input type="hidden" data-decidir="card_expiration_year"   value={vto.split('/')[1] || ''}    readOnly />
@@ -246,7 +238,6 @@ export default function PaywayForm({ total, pedidoId, compradorEmail, compradorN
         <select value={cuotas} onChange={e => setCuotas(Number(e.target.value))} className={inp + ' bg-white'}>
           <option value={1}>1 cuota sin interés</option>
           <option value={3}>3 cuotas sin interés</option>
-          <option value={6}>6 cuotas sin interés</option>
         </select>
       </div>
 
@@ -268,7 +259,7 @@ export default function PaywayForm({ total, pedidoId, compradorEmail, compradorN
       <button type="submit" disabled={loading || !sdkListo}
         className="w-full bg-[#111] hover:bg-gray-800 disabled:bg-gray-400 text-white font-bold py-4 rounded-xl text-sm transition-colors flex items-center justify-center gap-2">
         {loading
-          ? <><Loader2 size={16} className="animate-spin" /> Procesando pagoo...</>
+          ? <><Loader2 size={16} className="animate-spin" /> Procesando pago...</>
           : sdkListo
             ? `Pagar con tarjeta · ${fmt(total)}`
             : 'Cargando...'
