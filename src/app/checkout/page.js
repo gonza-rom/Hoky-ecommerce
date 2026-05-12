@@ -379,8 +379,8 @@ export default function CheckoutPage() {
   const maxDescuento = cart.length > 0 ? Math.max(...cart.map(i => i.descuentoEfectivo ?? DESCUENTO_DEFAULT)) : DESCUENTO_DEFAULT;
 
   const metodosPago = [
-    { id: 'payway',        icon: CreditCard, label: 'Tarjeta de crédito / débito', desc: 'Próximamente disponible',                                                  badge: null,                   disabled: false  },
-    { id: 'mercadopago',   icon: QrCode,     label: 'MARCATON BNA+',               desc: '20% de reintegro · Hasta 6 cuotas sin interés',                           badge: '20% Reintegro',        disabled: false },
+    { id: 'payway',        icon: CreditCard, label: 'Tarjeta de crédito',         desc: 'Hasta 3 cuotas sin interés',                                               badge: null,                   disabled: false  },
+    { id: 'mercadopago',   icon: QrCode,     label: 'MARCATON BNA+',               desc: '20% de reintegro · Hasta 3 cuotas sin interés',                           badge: '20% Reintegro',        disabled: false },
     { id: 'transferencia', icon: Building2,  label: 'Transferencia bancaria',       desc: 'Transferí y envianos el comprobante',                                      badge: `${maxDescuento}% OFF`, disabled: false },
     { id: 'efectivo',      icon: Banknote,   label: 'Efectivo',                     desc: tipoEnvio === 'retiro' ? 'Al retirar en el local' : 'Al recibir el pedido', badge: `${maxDescuento}% OFF`, disabled: false },
   ];
@@ -723,9 +723,9 @@ export default function CheckoutPage() {
                             <p className="text-[10px] text-sky-500 mt-0.5">en tu resumen de tarjeta</p>
                           </div>
                           <div className="flex-1 bg-white border border-sky-200 rounded-xl px-3 py-3 text-center">
-                            <p className="text-2xl font-black text-sky-600">6</p>
+                            <p className="text-2xl font-black text-sky-600">3</p>
                             <p className="text-[11px] font-semibold text-sky-700">cuotas sin interés</p>
-                            <p className="text-[10px] text-sky-500 mt-0.5">{fmt(total / 6)} / cuota</p>
+                            <p className="text-[10px] text-sky-500 mt-0.5">{fmt(total / 3)} / cuota</p>
                           </div>
                         </div>
 
