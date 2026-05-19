@@ -769,9 +769,9 @@ export default function CheckoutPage() {
                             <p className="text-[10px] text-sky-500 mt-0.5">en tu resumen de tarjeta</p>
                           </div>
                           <div className="flex-1 bg-white border border-sky-200 rounded-xl px-3 py-3 text-center">
-                            <p className="text-2xl font-black text-sky-600">3</p>
+                            <p className="text-2xl font-black text-sky-600">6</p>
                             <p className="text-[11px] font-semibold text-sky-700">cuotas sin interés</p>
-                            <p className="text-[10px] text-sky-500 mt-0.5">{fmt(total / 3)} / cuota</p>
+                            <p className="text-[10px] text-sky-500 mt-0.5">{fmt(total / 6)} / cuota</p>
                           </div>
                         </div>
 
