@@ -411,7 +411,7 @@ export default function CheckoutPage() {
       icon:       QrCode,
       iconCustom: null,
       label:      'MARCATON BNA+',
-      desc:       '20% de reintegro · Hasta 3 cuotas sin interés',
+      desc:       '20% de reintegro · Hasta 6 cuotas sin interés',
       badge:      '20% Reintegro',
       badgeColor: 'bg-sky-100 text-sky-700',
       disabled:   false,
@@ -426,16 +426,7 @@ export default function CheckoutPage() {
       badgeColor: 'bg-green-100 text-green-700',
       disabled:   false,
     },
-    {
-      id:         'efectivo',
-      icon:       Banknote,
-      iconCustom: null,
-      label:      'Efectivo',
-      desc:       tipoEnvio === 'retiro' ? 'Al retirar en el local' : 'Al recibir el pedido',
-      badge:      `${maxDescuento}% OFF`,
-      badgeColor: 'bg-green-100 text-green-700',
-      disabled:   false,
-    },
+
   ];
 
   function labelBoton() {
