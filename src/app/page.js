@@ -245,11 +245,6 @@ export default function Home() {
 
   const b = BANNERS[banner];
 
-  const catsMenu = [
-    { label: 'Todo', value: '' },
-    ...categorias.map(c => ({ label: c.nombre, value: String(c.id), hijos: c.hijos ?? [] })),
-  ];
-
   // Ir a una categoría/subcategoría y hacer scroll a la grilla de productos
   const irACategoria = (id) => {
     setCatActiva(String(id));
@@ -403,18 +398,18 @@ export default function Home() {
         .hk-strip-title { font-family: 'Bebas Neue', sans-serif; font-size: 30px; letter-spacing: 0.04em; margin: 0; }
         @media (min-width: 768px) { .hk-strip { padding: 36px 28px; flex-direction: row; align-items: center; justify-content: space-between; gap: 0; } .hk-strip-title { font-size: 42px; } }
 
-        /* ── Showcase de categorías completo (sin depender del filtro) ── */
-        .hk-cat-showcase { padding: 28px 16px 4px; }
-        @media (min-width: 768px) { .hk-cat-showcase { padding: 32px 28px 4px; } }
-        .hk-cat-showcase-title { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 0.04em; margin: 0 0 16px; color: #111; }
-        .hk-cat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
-        @media (min-width: 640px) { .hk-cat-grid { grid-template-columns: repeat(3, 1fr); } }
-        @media (min-width: 1024px) { .hk-cat-grid { grid-template-columns: repeat(4, 1fr); } }
-        .hk-cat-block { border: 1px solid #f0ede8; border-radius: 10px; padding: 14px; background: #fafaf8; }
-        .hk-cat-block-title { display: block; width: 100%; text-align: left; background: none; border: none; cursor: pointer; padding: 0 0 8px; font-size: 13px; font-weight: 700; color: #111; letter-spacing: 0.02em; }
-        .hk-cat-block-subs { display: flex; flex-wrap: wrap; gap: 6px; }
-        .hk-cat-sub-btn { background: #fff; border: 1px solid #e0dbd5; border-radius: 16px; padding: 4px 10px; font-size: 10.5px; color: #777; cursor: pointer; white-space: nowrap; }
-        .hk-cat-sub-btn:hover { background: #111; color: #fff; border-color: #111; }
+        /* ── Nube de etiquetas de categorías (estilo catálogo) ── */
+        .hk-tagcloud { padding: 22px 16px 6px; }
+        @media (min-width: 768px) { .hk-tagcloud { padding: 26px 28px 6px; } }
+        .hk-tagcloud-label { font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase; color: #aaa; margin: 0 0 12px; font-weight: 700; }
+        .hk-tagcloud-tags { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+        .hk-tag-cat { background: #111; color: #fff; border: 1px solid #111; border-radius: 20px; padding: 6px 14px; font-size: 11.5px; font-weight: 700; letter-spacing: 0.02em; cursor: pointer; white-space: nowrap; transition: opacity 0.15s; }
+        .hk-tag-cat:hover { opacity: 0.75; }
+        .hk-tag-cat.is-active { background: #fff; color: #111; }
+        .hk-tag-sub { background: #fff; color: #777; border: 1px solid #e0dbd5; border-radius: 20px; padding: 6px 13px; font-size: 11.5px; font-weight: 500; cursor: pointer; white-space: nowrap; transition: all 0.15s; }
+        .hk-tag-sub:hover { border-color: #111; color: #111; }
+        .hk-tag-sub.is-active { background: #111; color: #fff; border-color: #111; }
+        .hk-tagcloud-divider { width: 1px; height: 16px; background: #e0dbd5; margin: 0 2px; }
       `}</style>
 
       {/* Ticker */}
@@ -453,32 +448,36 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Showcase de categorías completo (visible siempre, sin depender del filtro) */}
+      {/* Nube de etiquetas: todas las categorías y subcategorías, estilo catálogo */}
       {categorias.length > 0 && (
-        <div className="hk-cat-showcase">
-          <h2 className="hk-cat-showcase-title">EXPLORÁ POR CATEGORÍA</h2>
-          <div className="hk-cat-grid">
-            {categorias.map(cat => (
-              <div key={cat.id} className="hk-cat-block">
-                <button className="hk-cat-block-title" onClick={() => irACategoria(cat.id)}>
-                  <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span>{cat.nombre}</span>
-                    {cat._count?.productos !== undefined && (
-                      <span style={{ opacity: 0.4, fontWeight: 400, fontSize: 11 }}>({cat._count.productos})</span>
-                    )}
-                  </span>
-                </button>
+        <div className="hk-tagcloud">
+          <p className="hk-tagcloud-label">Categorías</p>
+          <div className="hk-tagcloud-tags">
+            <button
+              onClick={() => setCatActiva('')}
+              className={`hk-tag-cat${catActiva === '' ? ' is-active' : ''}`}
+            >
+              Todo
+            </button>
 
-                {cat.hijos?.length > 0 && (
-                  <div className="hk-cat-block-subs">
-                    {cat.hijos.map(hijo => (
-                      <button key={hijo.id} className="hk-cat-sub-btn" onClick={() => irACategoria(hijo.id)}>
-                        {hijo.nombre}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+            {categorias.map(cat => (
+              <span key={cat.id} style={{ display: 'contents' }}>
+                <button
+                  onClick={() => irACategoria(cat.id)}
+                  className={`hk-tag-cat${catActiva === String(cat.id) ? ' is-active' : ''}`}
+                >
+                  {cat.nombre}
+                </button>
+                {cat.hijos?.map(hijo => (
+                  <button
+                    key={hijo.id}
+                    onClick={() => irACategoria(hijo.id)}
+                    className={`hk-tag-sub${catActiva === String(hijo.id) ? ' is-active' : ''}`}
+                  >
+                    {hijo.nombre}
+                  </button>
+                ))}
+              </span>
             ))}
           </div>
         </div>
@@ -515,22 +514,6 @@ export default function Home() {
             Ver todos →
           </Link>
         </div>
-      </div>
-
-      {/* Filtro categorías (pill bar) */}
-      <div className="hk-cats">
-        {catsMenu.map(cat => (
-          <button key={cat.value} onClick={() => setCatActiva(cat.value)} style={{
-            background: catActiva === cat.value ? '#111' : 'transparent',
-            color: catActiva === cat.value ? '#fff' : '#888',
-            border: `0.5px solid ${catActiva === cat.value ? '#111' : '#ddd'}`,
-            padding: '7px 16px', fontSize: 11, letterSpacing: '0.12em',
-            textTransform: 'uppercase', whiteSpace: 'nowrap',
-            cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0,
-          }}>
-            {cat.label}
-          </button>
-        ))}
       </div>
 
       {/* Tags de filtros activos */}
