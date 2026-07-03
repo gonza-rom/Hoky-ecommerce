@@ -26,7 +26,7 @@ const BANNERS = [
 ];
 
 // Cantidad de productos destacados a mostrar en el inicio
-const DESTACADOS_SIZE = 8;
+const DESTACADOS_SIZE = 12;
 
 export default function Home() {
   const [banner, setBanner] = useState(0);
