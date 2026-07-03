@@ -32,6 +32,10 @@ export default function Home() {
   const [banner, setBanner] = useState(0);
   const [destacados, setDestacados] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMas, setLoadingMas] = useState(false);
+  const [pagina, setPagina] = useState(1);
+  const [hayMas, setHayMas] = useState(false);
+  const [usarFallback, setUsarFallback] = useState(false); // true si no hay productos marcados como destacados
 
   const { addToCart } = useCart();
 
@@ -40,26 +44,55 @@ export default function Home() {
     return () => clearInterval(t);
   }, []);
 
+  const fetchDestacados = (page, esFallback) => {
+    const params = new URLSearchParams();
+    params.set('page', String(page));
+    params.set('pageSize', String(DESTACADOS_SIZE));
+    if (!esFallback) params.set('destacados', 'true');
+    return fetch(`/api/productos?${params}`).then(r => r.json());
+  };
+
   useEffect(() => {
-    setLoading(true);
-    // Intenta traer productos marcados como destacados
-    fetch(`/api/productos?destacado=true&pageSize=${DESTACADOS_SIZE}&page=1`)
-      .then(r => r.json())
+    setLoading(true); setPagina(1);
+    fetchDestacados(1, false)
       .then(data => {
         const lista = data?.productos ?? (Array.isArray(data) ? data : []);
         if (lista.length > 0) {
           setDestacados(lista);
-          return null;
+          setHayMas(data?.pagination?.hasNext ?? lista.length >= DESTACADOS_SIZE);
+          setUsarFallback(false);
+          return;
         }
         // Fallback: si no hay productos marcados como destacados (o el backend
-        // todavía no soporta el flag), muestra los más recientes
-        return fetch(`/api/productos?pageSize=${DESTACADOS_SIZE}&page=1`)
-          .then(r => r.json())
-          .then(d => setDestacados(d?.productos ?? (Array.isArray(d) ? d : [])));
+        // todavía no soporta el flag), muestra los más recientes con paginación normal
+        setUsarFallback(true);
+        return fetchDestacados(1, true).then(d => {
+          const listaFallback = d?.productos ?? (Array.isArray(d) ? d : []);
+          setDestacados(listaFallback);
+          setHayMas(d?.pagination?.hasNext ?? listaFallback.length >= DESTACADOS_SIZE);
+        });
       })
       .catch(() => setDestacados([]))
       .finally(() => setLoading(false));
   }, []);
+
+  const cargarMas = () => {
+    if (loadingMas || !hayMas) return;
+    setLoadingMas(true);
+    const nuevaPagina = pagina + 1;
+    fetchDestacados(nuevaPagina, usarFallback)
+      .then(data => {
+        const lista = data?.productos ?? (Array.isArray(data) ? data : []);
+        setDestacados(prev => {
+          const ids = new Set(prev.map(p => p.id));
+          return [...prev, ...lista.filter(p => !ids.has(p.id))];
+        });
+        setPagina(nuevaPagina);
+        setHayMas(data?.pagination?.hasNext ?? lista.length >= DESTACADOS_SIZE);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMas(false));
+  };
 
   const b = BANNERS[banner];
 
@@ -68,6 +101,7 @@ export default function Home() {
       <style>{`
         @keyframes hoky-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .hk-hero { display: grid; grid-template-columns: 1fr; min-height: 300px; }
         .hk-hero-img { display: none; }
         .hk-hero-text { padding: 36px 20px; }
@@ -130,7 +164,7 @@ export default function Home() {
       <div className="hk-sec-header">
         <div>
           <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 34, letterSpacing: '0.04em', margin: 0 }}>DESTACADOS</h2>
-          <p className="hk-sec-sub">Una selección de la temporada</p>
+          <p className="hk-sec-sub">{usarFallback ? 'Lo más nuevo de la temporada' : 'Una selección de la temporada'}</p>
         </div>
         <Link href="/productos" style={{ fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#888', textDecoration: 'none' }}>
           Ver catálogo →
@@ -155,6 +189,20 @@ export default function Home() {
           </div>
         )}
       </div>
+
+      {/* Cargar más destacados */}
+      {!loading && hayMas && destacados.length > 0 && (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 16px 32px' }}>
+          <button onClick={cargarMas} disabled={loadingMas} style={{
+            background: loadingMas ? '#f0ede8' : '#111', color: loadingMas ? '#999' : '#fff',
+            border: 'none', padding: '13px 40px', fontSize: 11, letterSpacing: '0.14em',
+            textTransform: 'uppercase', fontWeight: 700, cursor: loadingMas ? 'not-allowed' : 'pointer',
+            display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.2s', minWidth: 180, justifyContent: 'center',
+          }}>
+            {loadingMas ? <><span style={{ display: 'inline-flex', animation: 'spin 1s linear infinite' }}>⟳</span> Cargando...</> : 'Cargar más'}
+          </button>
+        </div>
+      )}
 
       {/* Strip CTA — único punto de acceso al catálogo completo */}
       <div className="hk-strip">
