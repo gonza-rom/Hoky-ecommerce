@@ -91,7 +91,17 @@ export default function Footer() {
                 Envíos y cambios
               </Link>
               <span>·</span>
-              <p>Desarrollado por el equipo de · DevHub</p>
+              <p>
+                Desarrollado por el equipo de ·{' '}
+                <a
+                  href="https://www.devhub.com.ar/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-gray-400 transition-colors"
+                >
+                  DevHub
+                </a>
+              </p>
             </div>
           </div>
         </div>
